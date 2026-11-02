@@ -3,13 +3,15 @@
  const pad=n=>String(n).padStart(2,'0'), key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
  const parse=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;const [y,m,d]=s.split('-').map(Number),v=new Date(y,m-1,d,12);return key(v)===s?v:null};
  const pretty=s=>{const d=parse(s);return d?d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Choose a date'};
- const icon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M7 3v4m10-4v4M3 11h18m4 4h3m4 0h3"/></svg>';
+ const icon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M8 3v4m8-4v4M3 11h18"/></svg>';
+ const syncers=new WeakMap();
  function enhance(){document.querySelectorAll('input[type="date"]:not([data-cw-date])').forEach(input=>{
   input.dataset.cwDate='true';input.classList.add('cw-date-original');input.tabIndex=-1;input.setAttribute('aria-hidden','true');
   const button=document.createElement('button');button.type='button';button.className='cw-date-trigger';button.setAttribute('aria-haspopup','dialog');
   input.after(button);
   const label=input.labels?.[0]?.textContent?.trim()||input.getAttribute('aria-label')||'Date';
-  function sync(){button.innerHTML='<span></span>'+icon;button.firstChild.textContent=pretty(input.value);button.disabled=input.disabled;button.setAttribute('aria-label',label+': '+pretty(input.value));button.classList.toggle('is-empty',!input.value)}
+    function sync(){button.innerHTML='<span></span>'+icon;button.firstChild.textContent=pretty(input.value);button.disabled=input.disabled;button.setAttribute('aria-label',label+': '+pretty(input.value));button.classList.toggle('is-empty',!input.value)}
+    syncers.set(input,sync);
   input.addEventListener('change',sync);input.addEventListener('input',sync);input.form?.addEventListener('reset',()=>setTimeout(sync));sync();
   button.onclick=()=>open(input,button,label,sync);
   input.addEventListener('focus',()=>button.focus());
@@ -34,5 +36,5 @@
   dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)close()}});
   dialog.addEventListener('close',()=>{dialog.remove();if(trigger.isConnected)trigger.focus()},{once:true});draw();dialog.showModal();const first=dialog.querySelector(`[data-date="${key(focus)}"]:not(:disabled)`)||dialog.querySelector('[data-date]:not(:disabled)');if(first){first.tabIndex=0;first.focus()}
  }
- new MutationObserver(enhance).observe(document.body,{childList:true,subtree:true});enhance();
+ new MutationObserver(records=>{enhance();records.forEach(({target})=>syncers.get(target)?.())}).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled']});enhance();
 })();

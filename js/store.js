@@ -38,13 +38,166 @@
     do d = stepDate(d, rule, anchor); while (toKey(d) <= today);
     return toKey(d);
   }
+  function weeklyTasks(task) {
+    const rule = asRule(task.repeat);
+    const days = rule?.unit === "week" && rule.days?.length > 1
+      ? [...new Set(rule.days)].filter(day => Number.isInteger(day) && day >= 0 && day <= 6).sort((a, b) => a - b)
+      : [];
+    if (days.length < 2 || !task.due) return [task];
+
+    const interval = Math.max(1, rule.interval || 1), base = parseKey(task.due);
+    base.setHours(12, 0, 0, 0);
+    const nextByDay = new Map(days.map(day => {
+      const date = new Date(base);
+      date.setDate(date.getDate() + (day - date.getDay() + 7) % 7);
+      if (date < base) date.setDate(date.getDate() + interval * 7);
+      return [day, date];
+    }));
+    const counts = new Map(days.map(day => [day, 1]));
+    const end = rule.end || { type: "never" };
+
+    if (end.type === "after") {
+      for (const day of days) counts.set(day, 0);
+      const next = new Map(nextByDay);
+      for (let occurrence = 0; occurrence < Math.max(1, Number(end.count) || 1); occurrence++) {
+        const day = days.reduce((first, candidate) => next.get(candidate) < next.get(first) ? candidate : first, days[0]);
+        counts.set(day, counts.get(day) + 1);
+        const date = new Date(next.get(day));
+        date.setDate(date.getDate() + interval * 7);
+        next.set(day, date);
+      }
+    }
+
+    return days.filter(day => counts.get(day) > 0 && (end.type !== "on" || !end.date || toKey(nextByDay.get(day)) <= end.date))
+      .map(day => {
+        const dayRule = { ...rule, days: [day], seriesDays: days, seriesEnd: end };
+        if (end.type === "after") dayRule.end = { type: "after", count: counts.get(day) };
+        return { ...task, due: toKey(nextByDay.get(day)), repeat: dayRule };
+      }).sort((a, b) => a.due.localeCompare(b.due));
+  }
+  function recurrenceTasks(task) {
+    const rule = asRule(task.repeat), end = rule?.end;
+    if (!rule || rule.materialized) return { tasks: [task], truncated: false };
+    if (!end || !["after", "on"].includes(end.type)) {
+      const seriesId = rule.seriesId || uid();
+      return { tasks: weeklyTasks(task).map((item, index) => ({
+        ...item, repeat: { ...asRule(item.repeat), seriesId, seriesPosition: index }
+      })), truncated: false };
+    }
+
+    const anchor = parseKey(task.due).getDate();
+    const seriesId = rule.seriesId || uid();
+    let date = parseKey(task.due);
+    date.setHours(12, 0, 0, 0);
+    if (rule.unit === "week" && rule.days?.length && !rule.days.includes(date.getDay())) {
+      date = stepDate(date, rule, anchor);
+    }
+    const count = end.type === "after" ? Math.max(1, Number(end.count) || 1) : Infinity;
+    const tasks = [];
+    let truncated = false;
+    while (tasks.length < count && (end.type !== "on" || toKey(date) <= end.date)) {
+      if (tasks.length === 100) { truncated = true; break; }
+      const repeat = { ...rule, materialized: true, seriesId, seriesPosition: tasks.length };
+      if (rule.unit === "week" && rule.days?.length > 1) {
+        repeat.seriesDays = [...new Set(rule.days)];
+        repeat.seriesEnd = end;
+      }
+      tasks.push({ ...task, due: toKey(date), repeat });
+      date = stepDate(date, rule, anchor);
+    }
+    if (!tasks.length) throw new Error("The recurrence end must be on or after the first occurrence.");
+    return { tasks, truncated };
+  }
+  function legacySeriesTasks(tasks, task) {
+    const rule = task.repeat;
+    if (!rule?.materialized || rule.seriesId || !rule.end || !["after", "on"].includes(rule.end.type)) return [];
+
+    const { materialized, seriesPosition, seriesDays, seriesEnd, ...repeat } = rule;
+    const identity = JSON.stringify({ title: task.title, categoryId: task.categoryId, listId: task.listId,
+      time: task.time, reminder: task.reminder, repeat });
+    const candidates = tasks.filter(item => {
+      const candidate = item.repeat;
+      if (!candidate?.materialized || candidate.seriesId || !candidate.end || !["after", "on"].includes(candidate.end.type)) return false;
+      const { materialized: ignoredMaterialized, seriesPosition: ignoredPosition, seriesDays: ignoredDays, seriesEnd: ignoredEnd, ...candidateRepeat } = candidate;
+      return JSON.stringify({ title: item.title, categoryId: item.categoryId, listId: item.listId,
+        time: item.time, reminder: item.reminder, repeat: candidateRepeat }) === identity;
+    }).sort((a, b) => a.due.localeCompare(b.due));
+    if (candidates.length < 2) return candidates;
+
+    const first = parseKey(candidates[0].due), anchor = first.getDate(), included = new Set([candidates[0].id]);
+    let expected = first, steps = 0;
+    for (const candidate of candidates.slice(1)) {
+      while (toKey(expected) < candidate.due && steps < 1000) {
+        expected = stepDate(expected, rule, anchor);
+        steps++;
+      }
+      if (toKey(expected) === candidate.due) included.add(candidate.id);
+    }
+    return candidates.filter(item => included.has(item.id));
+  }
+  function taskDeletionIds(tasks, task, scope) {
+    const ids = new Set(), addFollowing = start => {
+      let current = start;
+      while (current && !ids.has(current.id)) {
+        ids.add(current.id);
+        current = tasks.find(item => item.id === current.spawned);
+      }
+    };
+    const seriesId = task.repeat?.seriesId, legacySeries = seriesId ? [] : legacySeriesTasks(tasks, task);
+    if (seriesId) {
+      const series = tasks.filter(item => item.repeat?.seriesId === seriesId), familyIds = new Set();
+      series.forEach(start => {
+        let current = start;
+        while (current && !familyIds.has(current.id)) {
+          familyIds.add(current.id);
+          current = tasks.find(item => item.id === current.spawned);
+        }
+      });
+      const family = tasks.filter(item => familyIds.has(item.id));
+      const position = task.repeat?.materialized ? task.repeat.seriesPosition : null;
+      const selected = scope === "all" ? family : scope === "following"
+        ? family.filter(item => Number.isInteger(position) && item.repeat?.materialized && Number.isInteger(item.repeat.seriesPosition)
+          ? item.repeat.seriesPosition >= position : item.due >= task.due)
+        : [task];
+      selected.forEach(addFollowing);
+    } else if (legacySeries.length) {
+      const familyIds = new Set();
+      legacySeries.forEach(start => {
+        let current = start;
+        while (current && !familyIds.has(current.id)) {
+          familyIds.add(current.id);
+          current = tasks.find(item => item.id === current.spawned);
+        }
+      });
+      const family = tasks.filter(item => familyIds.has(item.id));
+      const selected = scope === "all" ? family : scope === "following"
+        ? family.filter(item => item.due >= task.due) : [task];
+      selected.forEach(addFollowing);
+    } else if (scope === "this") {
+      ids.add(task.id);
+    } else {
+      let first = task;
+      if (scope === "all") {
+        const seen = new Set([task.id]);
+        while (true) {
+          const previous = tasks.find(item => item.spawned === first.id && !seen.has(item.id));
+          if (!previous) break;
+          first = previous;
+          seen.add(first.id);
+        }
+      }
+      addFollowing(first);
+    }
+    return ids;
+  }
   function repeatLabel(r) {
     if (typeof r === "string") return REPEATS[r];
     const n = r.interval || 1;
     let s = n === 1 ? `Every ${r.unit}` : `Every ${n} ${r.unit}s`;
-    if (r.unit === "week" && r.days && r.days.length) s += " on " + [...r.days].sort().map(i => DAYN[i]).join(", ");
-    if (r.end && r.end.type === "on") s += ", until " + parseKey(r.end.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    if (r.end && r.end.type === "after") s += `, ${r.end.count} times`;
+    const days = r.seriesDays || r.days, end = r.seriesEnd || r.end;
+    if (r.unit === "week" && days && days.length) s += " on " + [...days].sort().map(i => DAYN[i]).join(", ");
+    if (end && end.type === "on") s += ", until " + parseKey(end.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    if (end && end.type === "after") s += `, ${end.count} times`;
     return s;
   }
   const uid = () => "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -153,13 +306,32 @@
     async updateCategory(n,p) { await write(db.from('Categories').update({DisplayName:p.name,DisplayColor:p.tone}).eq('CategoryID',n).eq('UserID',owner).select('CategoryID').single()); },
     async deleteCategory(n) { await write(db.rpc('tidy_delete_category',{p_id:n})); },
     async addTask(p) {
-      const sortOrder=Math.max(-1,...state.tasks.filter(t=>t.listId===p.listId).map(t=>t.sortOrder))+1;
-      await write(db.from('Tasks').insert({...taskToRow(p),SortOrder:sortOrder,UserID:owner,IsComplete:false,IsAssignment:false}));
+      const {tasks,truncated}=recurrenceTasks(p), sortOrder=Math.max(-1,...state.tasks.filter(t=>t.listId===p.listId).map(t=>t.sortOrder))+1;
+      await write(db.from('Tasks').insert(tasks.map((task,index)=>({...taskToRow(task),SortOrder:sortOrder+index,UserID:owner,IsComplete:false,IsAssignment:false}))));
+      return {truncated};
     },
     async updateTask(n,p) {
-      const task=state.tasks.find(t=>t.id===n), row=taskToRow(p);
-      if (task && task.listId!==p.listId) row.SortOrder=Math.max(-1,...state.tasks.filter(t=>t.listId===p.listId).map(t=>t.sortOrder))+1;
+      const existing=state.tasks.find(t=>t.id===n), sameRepeat=!!existing&&existing.due===p.due&&JSON.stringify(existing.repeat)===JSON.stringify(p.repeat);
+      const plan=existing?.spawned&&sameRepeat?{tasks:[p],truncated:false}:recurrenceTasks(p), tasks=plan.tasks, row=taskToRow(tasks[0]);
+      let sortOrder=existing?.sortOrder ?? 0;
+      if (existing && existing.listId!==p.listId) sortOrder=Math.max(-1,...state.tasks.filter(t=>t.listId===p.listId).map(t=>t.sortOrder))+1;
+      row.SortOrder=sortOrder;
+      if (existing?.spawned&&!sameRepeat) {
+        const descendants=[]; let childId=existing.spawned;
+        while(childId&&!descendants.includes(childId)) {
+          const child=state.tasks.find(t=>t.id===childId);
+          if(!child) break;
+          descendants.push(childId); childId=child.spawned;
+        }
+        if(descendants.length) await result(db.from('Tasks').delete().in('TaskID',descendants).eq('UserID',owner));
+        row.SpawnedTaskID=null;
+      }
+      if (tasks.length > 1) {
+        const nextOrder=Math.max(-1,...state.tasks.filter(t=>t.listId===p.listId).map(t=>t.sortOrder))+1;
+        await result(db.from('Tasks').insert(tasks.slice(1).map((task,index)=>({...taskToRow(task),SortOrder:nextOrder+index,UserID:owner,IsComplete:false,IsAssignment:false}))));
+      }
       await write(db.from('Tasks').update(row).eq('TaskID',n).eq('UserID',owner).select('TaskID').single());
+      return {truncated:plan.truncated};
     },
     async reorderTasks(taskId,targetListId,targetTaskIds,sourceTaskIds) {
       await write(db.rpc('tidy_reorder_tasks',{
@@ -169,11 +341,23 @@
         p_source_task_ids:sourceTaskIds
       }));
     },
-    async deleteTask(n) { await write(db.from('Tasks').delete().eq('TaskID',n).eq('UserID',owner).select('TaskID').single()); },
+    async deleteTask(n, scope = 'this') {
+      const task = state.tasks.find(item => item.id === n);
+      if (!task) throw new Error('Task not found. Reload the page.');
+      const ids = taskDeletionIds(state.tasks, task, scope);
+
+      const predecessor = state.tasks.find(item => item.spawned && ids.has(item.spawned) && !ids.has(item.id));
+      if (predecessor) {
+        const nextId = scope === 'this' && task.spawned && state.tasks.some(item => item.id === task.spawned)
+          ? task.spawned : null;
+        await result(db.from('Tasks').update({SpawnedTaskID:nextId}).eq('TaskID',predecessor.id).eq('UserID',owner).select('TaskID').single());
+      }
+      await write(db.from('Tasks').delete().in('TaskID',[...ids]).eq('UserID',owner).select('TaskID'));
+    },
     async toggleTask(n) {
       const t=state.tasks.find(t=>t.id===n); if (!t) throw new Error('Task not found. Reload the page.');
       let next, ended=false;
-      if (!t.done && t.repeat && t.due) {
+      if (!t.done && t.repeat && t.due && !asRule(t.repeat).materialized && !t.spawned) {
         const end=asRule(t.repeat).end || {type:'never'}, occ=t.occ || 1;
         next=nextDate(t.due,t.repeat);
         if ((end.type==='after' && occ>=end.count) || (end.type==='on' && end.date && next>end.date)) {next=undefined;ended=true;}

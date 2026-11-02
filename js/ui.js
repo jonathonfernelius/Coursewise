@@ -13,6 +13,7 @@
     list: svg('<path d="M8 6h12M8 12h12M8 18h12"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>'),
     grip: svg('<circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>'),
     calendar: svg('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/>'),
+    close: svg('<path d="m18 6-12 12M6 6l12 12"/>'),
     user: svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>')
   };
 
@@ -41,8 +42,8 @@
 
   function taskRow(t, { edit = true, date = true, overdue = false, draggable = false } = {}) {
     const c = T.cat(t.categoryId);
-    return `<div class="task${t.done ? " done" : ""}${overdue ? " overdue" : ""}"${draggable ? ` data-task-id="${esc(t.id)}"` : ""}>
-      ${draggable ? `<button type="button" class="task-drag" draggable="true" data-drag-task="${esc(t.id)}" aria-label="Reorder or move task ${esc(t.title)}" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight" title="Drag to reorder or move; use arrow keys">${icons.grip}</button>` : ""}
+    return `<div class="task${t.done ? " done" : ""}${overdue ? " overdue" : ""}"${draggable ? ` data-task-id="${esc(t.id)}" draggable="true"` : ""}>
+      ${draggable ? `<button type="button" class="task-drag" data-drag-task="${esc(t.id)}" aria-label="Reorder or move task ${esc(t.title)}" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight" title="Drag the task or use arrow keys">${icons.grip}</button>` : ""}
       <button class="check${t.done ? " on" : ""}" data-toggle="${t.id}" aria-label="${t.done ? "Mark incomplete" : "Mark complete"}">${t.done ? icons.check : ""}</button>
       <div class="task-body"><p class="task-title">${esc(t.title)}</p><div class="task-meta">
         ${c ? `<span class="chip t-${c.tone}">${esc(c.name)}</span>` : ""}
@@ -50,10 +51,28 @@
         ${t.time ? `<span class="time">${icons.clock}${T.fmtTime(t.time)}</span>` : ""}
         ${t.repeat ? `<span class="time">${icons.repeat}${esc(T.repeatLabel(t.repeat))}</span>` : ""}
         ${t.fromCanvas ? "<span>Canvas</span>" : ""}</div></div>
-      ${edit ? `<button class="icon-btn" data-edit="${t.id}" aria-label="Edit task">${icons.pencil}</button>` : ""}</div>`;
+        ${edit ? `<button class="icon-btn" data-edit="${t.id}" aria-label="Edit task">${icons.pencil}</button><button class="icon-btn danger" data-delete-task="${t.id}" aria-label="Delete task">${icons.trash}</button>` : ""}</div>`;
   }
 
   const options = (items, sel) => items.map(([v, l]) => `<option value="${esc(v)}"${v === sel ? " selected" : ""}>${esc(l)}</option>`).join("");
+
+  function taskDeletionDialog({ task, done }) {
+    const hasPrevious = T.state.tasks.some(item => item.spawned === task.id);
+    const finiteLegacy = task.repeat?.materialized && !task.repeat.seriesId && ["after", "on"].includes(task.repeat.end?.type);
+    const recurring = !!task.repeat && (!task.repeat.materialized || !!task.repeat.seriesId || finiteLegacy) || !!task.spawned || hasPrevious;
+    const d = modal(`<form class="dialog-body"><h2>${recurring ? "Delete repeating task" : "Delete task?"}</h2>
+      ${recurring ? `<fieldset class="delete-options" aria-label="Repeating task deletion scope">
+        <label><input type="radio" name="delete-scope" value="this" checked> This task</label>
+        <label><input type="radio" name="delete-scope" value="following"> This and following tasks</label>
+        <label><input type="radio" name="delete-scope" value="all"> All tasks</label>
+      </fieldset>` : `<p>Delete “${esc(task.title)}”?</p>`}
+      <div class="dialog-actions"><button type="button" class="btn btn-outline" data-close>Cancel</button><button class="btn btn-danger">${icons.trash} Delete</button></div></form>`);
+    d.querySelector("form").onsubmit = e => { e.preventDefault(); run(async () => {
+      const scope = d.querySelector("[name=delete-scope]:checked")?.value || "this";
+      await T.deleteTask(task.id, scope);
+      d.close(); toast(scope === "all" ? "Repeating task deleted" : scope === "following" ? "This and following tasks deleted" : "Task deleted"); done();
+    }, e.submitter); };
+  }
 
   function manageCategories({ done }) {
     const body = () => `<div class="dialog-body"><h2>Manage categories</h2>
@@ -123,12 +142,36 @@
     }, e.submitter); };
   }
 
-  const catOptions = sel => options([...T.categories.map(c => [c.id, c.name]), ["", "No category"], ["__new", "+ New category…"]], sel);
+  function categoryPickerMarkup(selected) {
+    const active = T.cat(selected);
+    return `<div class="category-picker" id="f-cat-picker">
+      <input type="hidden" id="f-cat" value="${esc(active?.id || "")}">
+      <button type="button" class="category-picker-trigger" id="f-cat-trigger" aria-haspopup="menu" aria-expanded="false" aria-labelledby="f-cat-label f-cat-value">
+        <span id="f-cat-value">${esc(active?.name || "No category")}</span>${icons.down}</button>
+      <div class="category-picker-menu" id="f-cat-menu" role="menu" aria-labelledby="f-cat-label" hidden>
+        ${T.categories.map(c => `<div class="category-picker-item">
+          <button type="button" role="menuitemradio" aria-checked="${active?.id === c.id}" data-category-choice="${esc(c.id)}" title="${esc(c.name)}">${esc(c.name)}</button>
+          <button type="button" class="category-picker-delete" data-delete-category="${esc(c.id)}" aria-label="Delete category ${esc(c.name)}" title="Delete category">${icons.close}</button>
+        </div>`).join("")}
+        <button type="button" class="category-picker-choice" role="menuitemradio" aria-checked="${!active}" data-category-choice="">No category</button>
+        <button type="button" class="category-picker-choice" role="menuitem" data-new-category>${icons.plus} New category…</button>
+      </div>
+    </div>`;
+  }
+
+  function categoryDeleteDialog({ cat, done }) {
+    const d = modal(`<form class="dialog-body"><h2>Delete category?</h2>
+      <p>Delete “${esc(cat.name)}”? This action cannot be undone.</p>
+      <div class="dialog-actions"><button type="button" class="btn btn-outline" data-close>Cancel</button><button class="btn btn-danger">${icons.trash} Delete category</button></div></form>`);
+    d.querySelector("form").onsubmit = e => { e.preventDefault(); run(async () => {
+      await T.deleteCategory(cat.id); d.close(); toast("Category deleted"); done();
+    }, e.submitter); };
+  }
 
   function categoryDialog({ cat, done }) {
     const tone = cat?.tone || T.tones.find(t => !T.categories.some(c => c.tone === t)) || T.tones[0];
     const d = modal(`<form class="dialog-body"><h2>${cat ? "Edit category" : "New category"}</h2>
-      <div class="field"><label for="c-name">Name</label><input id="c-name" required maxlength="24" value="${esc(cat?.name)}" placeholder="e.g. UX Design"></div>
+      <div class="field"><label for="c-name">Name</label><input id="c-name" required maxlength="50" value="${esc(cat?.name)}" placeholder="e.g. UX Design"></div>
       <fieldset class="field"><legend>Color</legend><div class="swatches">${T.tones.map(t => `<label class="swatch t-${t}"><input type="radio" name="tone" value="${t}"${t === tone ? " checked" : ""}><span></span><span class="sr-only">${t}</span></label>`).join("")}</div></fieldset>
       <div class="dialog-actions"><button class="btn btn-primary">${cat ? "Save category" : "Add category"}</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
       ${cat ? `<button type="button" class="delete-link" id="c-del">${icons.trash} Delete category</button>` : ""}</form>`);
@@ -139,12 +182,18 @@
       let c = cat; if (cat) await T.updateCategory(cat.id, { name, tone: t }); else c = await T.addCategory(name, t);
       d.close(); toast(cat ? "Category updated" : "Category added"); done(c);
     }, e.submitter); };
-    if (cat) d.querySelector("#c-del").onclick = e => run(async () => { await T.deleteCategory(cat.id); d.close(); toast("Category deleted"); done(null); }, e.currentTarget);
+    if (cat) d.querySelector("#c-del").onclick = () => categoryDeleteDialog({ cat, done: () => { d.close(); done(null); } });
   }
 
   function taskDialog({ task, listId, due, done }) {
     const S = T.state, r = task?.reminder;
+    const initialCategory = task ? task.categoryId || "" : "";
     let repeatVal = task?.repeat || null;
+    const showRepeatHint = rule => {
+      if (!rule) return false;
+      const end = typeof rule === "object" ? rule.end : null;
+      return !end || end.type === "never";
+    };
     const repOptions = () => {
       const cur = repeatVal && typeof repeatVal === "object" ? repeatVal : null;
       return options([["", "Does not repeat"], ...Object.entries(T.repeats), ...(cur ? [["__cur", T.repeatLabel(cur)]] : []), ["__custom", "Custom…"]], cur ? "__cur" : repeatVal || "");
@@ -153,7 +202,7 @@
       <h2>${task ? "Edit task" : "Add task"}</h2>
       <div class="field"><label for="f-title">Task</label><input id="f-title" required value="${esc(task?.title)}" placeholder="What needs to get done?"></div>
       <div class="grid-2">
-        <div class="field"><label for="f-cat">Category</label><select id="f-cat">${catOptions(task ? task.categoryId ?? "" : undefined)}</select></div>
+        <div class="field"><span class="field-label" id="f-cat-label">Category</span>${categoryPickerMarkup(initialCategory)}</div>
         <div class="field"><label for="f-list">List</label><select id="f-list">${listOptions(task?.listId || listId)}</select></div>
       </div>
       <div class="grid-2">
@@ -161,18 +210,45 @@
         <div class="field"><label for="f-time">Time (optional)</label><input id="f-time" type="time" value="${task?.time || ""}"></div>
       </div>
       <div class="field"><label for="f-rep">Repeat</label><select id="f-rep">${repOptions()}</select>
-        <small class="hint${task?.repeat ? "" : " hide"}" id="rep-hint">Marking it done adds the next one automatically.</small></div>
-      <div class="switch-row"><label for="f-rem">Reminder preference</label><span class="switch"><input id="f-rem" type="checkbox"${r ? " checked" : ""}><span></span></span></div>
+        <small class="hint${showRepeatHint(repeatVal) ? "" : " hide"}" id="rep-hint">Marking it done adds the next one automatically.</small></div>
+      <div class="switch-row"><label for="f-rem">Schedule Reminder</label><span class="switch"><input id="f-rem" type="checkbox"${r ? " checked" : ""}><span></span></span></div>
       <p class="muted">Saved for later; notifications are not enabled yet.</p><div class="field${r ? "" : " hide"}" id="rem-wrap"><label for="f-remwhen">Remind me</label><select id="f-remwhen">${options([["15m", "15 minutes before"], ["1h", "1 hour before"], ["1d", "1 day before"], ["1w", "1 week before"]], r || "1h")}</select></div>
       <div class="dialog-actions"><button class="btn btn-primary">${task ? "Update" : "Save task"}</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
       ${task ? `<button type="button" class="delete-link" id="f-del">${icons.trash} Delete task</button>` : ""}</form>`);
     const q = id => d.querySelector("#" + id);
-    let prev = q("f-cat").value;
-    q("f-cat").onchange = e => {
-      if (e.target.value !== "__new") { prev = e.target.value; return; }
-      e.target.value = prev;
-      categoryDialog({ done: c => { if (c) { q("f-cat").innerHTML = catOptions(c.id); prev = c.id; } } });
+    const renderCategoryPicker = selected => { q("f-cat-picker").outerHTML = categoryPickerMarkup(selected); };
+    const closeCategoryMenu = returnFocus => {
+      const menu = q("f-cat-menu");
+      if (!menu || menu.hidden) return;
+      menu.hidden = true; q("f-cat-trigger").setAttribute("aria-expanded", "false");
+      if (returnFocus) q("f-cat-trigger").focus();
     };
+    d.addEventListener("click", e => {
+      const trigger = e.target.closest("#f-cat-trigger"), choice = e.target.closest("[data-category-choice]"),
+        deleteButton = e.target.closest("[data-delete-category]"), addCategory = e.target.closest("[data-new-category]");
+      if (trigger) {
+        const menu = q("f-cat-menu"), open = menu.hidden;
+        menu.hidden = !open; trigger.setAttribute("aria-expanded", String(open));
+        if (open) menu.querySelector('[aria-checked="true"]')?.focus();
+      } else if (choice) {
+        renderCategoryPicker(choice.dataset.categoryChoice);
+        q("f-cat-trigger").focus();
+      } else if (deleteButton) {
+        const cat = T.cat(deleteButton.dataset.deleteCategory);
+        if (cat) categoryDeleteDialog({ cat, done: () => {
+          const selected = q("f-cat").value === cat.id ? "" : q("f-cat").value;
+          renderCategoryPicker(selected);
+        } });
+      } else if (addCategory) {
+        closeCategoryMenu();
+        categoryDialog({ done: cat => { if (cat) renderCategoryPicker(cat.id); } });
+      } else if (!e.target.closest("#f-cat-picker")) closeCategoryMenu();
+    });
+    d.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !q("f-cat-menu").hidden) {
+        e.preventDefault(); e.stopPropagation(); closeCategoryMenu(true);
+      }
+    });
     let prevList = q("f-list").value;
     q("f-list").onchange = e => {
       if (e.target.value !== "__new") { prevList = e.target.value; return; }
@@ -185,14 +261,14 @@
       if (v === "__custom") {
         recurrenceDialog({
           rule: repeatVal && typeof repeatVal === "object" ? repeatVal : null, due: q("f-due").value,
-          done: rule => { repeatVal = rule; q("f-rep").innerHTML = repOptions(); prevRep = q("f-rep").value; q("rep-hint").classList.remove("hide"); },
+          done: rule => { repeatVal = rule; q("f-rep").innerHTML = repOptions(); prevRep = q("f-rep").value; q("rep-hint").classList.toggle("hide", !showRepeatHint(repeatVal)); },
           cancel: () => { q("f-rep").value = prevRep; }
         });
         return;
       }
       if (v !== "__cur") repeatVal = v || null;
       prevRep = q("f-rep").value;
-      q("rep-hint").classList.toggle("hide", !repeatVal);
+      q("rep-hint").classList.toggle("hide", !showRepeatHint(repeatVal));
     };
     q("f-rem").onchange = e => q("rem-wrap").classList.toggle("hide", !e.target.checked);
     d.querySelector("form").onsubmit = e => { e.preventDefault(); run(async () => {
@@ -201,10 +277,13 @@
       if (p.repeat && !p.due) p.due = T.toKey(new Date());
       if (!p.title) return;
       if (p.listId === "__new") throw new Error("Create a list before saving this task.");
-      await (task ? T.updateTask(task.id, p) : T.addTask(p));
-      d.close(); toast(task ? "Task updated" : "Task added"); done();
+      const result = await (task ? T.updateTask(task.id, p) : T.addTask(p));
+      d.close(); toast(result?.truncated ? "Only the first 100 occurrences were created." : task ? "Task updated" : "Task added"); done();
     }, e.submitter); };
-    if (task) q("f-del").onclick = e => run(async () => { await T.deleteTask(task.id); d.close(); toast("Task deleted"); done(); }, e.currentTarget);
+    if (task) q("f-del").onclick = e => {
+      e.preventDefault();
+      taskDeletionDialog({ task, done: () => { d.close(); done(); } });
+    };
   }
 
   async function toggle(id) {
@@ -241,9 +320,13 @@
       <nav aria-label="Footer">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</nav></footer>`);
     const rerender = () => render();
     document.addEventListener("click", e => {
-      const tg = e.target.closest("[data-toggle]"), ed = e.target.closest("[data-edit]");
+      const tg = e.target.closest("[data-toggle]"), ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-delete-task]");
       if (tg) run(async () => { await toggle(tg.dataset.toggle); rerender(); }, tg);
       if (ed) taskDialog({ task: T.state.tasks.find(t => t.id === ed.dataset.edit), done: rerender });
+      if (del) {
+        const task = T.state.tasks.find(item => item.id === del.dataset.deleteTask);
+        if (task) taskDeletionDialog({ task, done: rerender });
+      }
     });
     rerender();
   }

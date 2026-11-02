@@ -77,15 +77,19 @@
 
     let draggedTaskId = null, draggedTaskSourceId = null, taskDropped = false;
     listContainer.querySelectorAll("[data-drag-task]").forEach(handle => {
-      handle.addEventListener("dragstart", e => {
+      handle.closest(".task").addEventListener("dragstart", e => {
         if (taskOrderSaving) { e.preventDefault(); return; }
+        if (e.target.closest("button:not(.task-drag), input, select, textarea, a, [contenteditable=true]")) {
+          e.preventDefault(); return;
+        }
         e.stopPropagation();
-        draggedTaskId = handle.dataset.dragTask;
+        const row = handle.closest(".task");
+        draggedTaskId = row.dataset.taskId;
         draggedTaskSourceId = handle.closest(".list-card").dataset.listId;
         taskDropped = false;
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", draggedTaskId);
-        handle.closest(".task").classList.add("is-dragging");
+        row.classList.add("is-dragging");
       });
       handle.addEventListener("keydown", e => {
         if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
@@ -101,13 +105,14 @@
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       listContainer.querySelectorAll(".list-card.is-drop-target").forEach(el => el.classList.remove("is-drop-target"));
+      listContainer.querySelectorAll(".task-drop-before, .task-drop-after").forEach(el => el.classList.remove("task-drop-before", "task-drop-after"));
+      listContainer.querySelectorAll(".task-list.is-drop-end").forEach(el => el.classList.remove("is-drop-end"));
       card.classList.add("is-drop-target");
-      if (card.dataset.listId !== draggedTaskSourceId) return;
       const target = e.target.closest(".task[data-task-id]");
-      if (!target || target.dataset.taskId === draggedTaskId) return;
-      const dragged = [...listContainer.querySelectorAll(".task[data-task-id]")].find(row => row.dataset.taskId === draggedTaskId);
-      const bounds = target.getBoundingClientRect();
-      target.parentElement.insertBefore(dragged, e.clientY > bounds.top + bounds.height / 2 ? target.nextSibling : target);
+      if (target && target.dataset.taskId !== draggedTaskId) {
+        const bounds = target.getBoundingClientRect();
+        target.classList.add(e.clientY > bounds.top + bounds.height / 2 ? "task-drop-after" : "task-drop-before");
+      } else if (!target) card.querySelector(".task-list")?.classList.add("is-drop-end");
     });
     listContainer.addEventListener("drop", e => {
       if (!draggedTaskId) return;
@@ -116,20 +121,16 @@
       e.preventDefault();
       taskDropped = true;
       const targetListId = card.dataset.listId;
+      const target = e.target.closest(".task[data-task-id]");
+      if (target?.dataset.taskId === draggedTaskId) return;
       const targetVisible = [...card.querySelectorAll(".task[data-task-id]")]
         .map(row => row.dataset.taskId)
         .filter(id => id !== draggedTaskId);
-      if (targetListId !== draggedTaskSourceId) {
-        const target = e.target.closest(".task[data-task-id]");
-        if (target && target.dataset.taskId !== draggedTaskId) {
-          const index = targetVisible.indexOf(target.dataset.taskId);
-          const after = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
-          targetVisible.splice(index + (after ? 1 : 0), 0, draggedTaskId);
-        } else targetVisible.push(draggedTaskId);
-      } else {
-        targetVisible.push(draggedTaskId);
-        targetVisible.splice(0, targetVisible.length, ...[...card.querySelectorAll(".task[data-task-id]")].map(row => row.dataset.taskId));
-      }
+      if (target && target.dataset.taskId !== draggedTaskId) {
+        const index = targetVisible.indexOf(target.dataset.taskId);
+        const after = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+        targetVisible.splice(index + (after ? 1 : 0), 0, draggedTaskId);
+      } else targetVisible.push(draggedTaskId);
       const targetIds = withHiddenTasks(targetListId, targetVisible, draggedTaskId);
       const sourceCard = [...listContainer.querySelectorAll(".list-card")]
         .find(item => item.dataset.listId === draggedTaskSourceId);
@@ -148,6 +149,8 @@
       if (!draggedTaskId) return;
       e.target.closest(".task")?.classList.remove("is-dragging");
       listContainer.querySelectorAll(".list-card.is-drop-target").forEach(el => el.classList.remove("is-drop-target"));
+      listContainer.querySelectorAll(".task-drop-before, .task-drop-after").forEach(el => el.classList.remove("task-drop-before", "task-drop-after"));
+      listContainer.querySelectorAll(".task-list.is-drop-end").forEach(el => el.classList.remove("is-drop-end"));
       if (!taskDropped) render();
       draggedTaskId = null;
       draggedTaskSourceId = null;
