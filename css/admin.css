@@ -8,27 +8,6 @@
   padding-bottom: 4rem;
 }
 
-.site-header .brand-logo-themed {
-  display: block;
-  width: clamp(124px, 14vw, 152px);
-  height: 28px;
-  flex: 0 0 auto;
-
-  /* The logo image supplies the shape; the theme supplies its color. */
-  color: var(--primary-dark);
-  background-color: currentColor;
-
-  /* Set each mask property explicitly for browser compatibility. */
-  -webkit-mask-image: url("../assets/coursewise-logo-white.png");
-  mask-image: url("../assets/coursewise-logo-white.png");
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-}
-
 .okr-heading {
   display: flex;
   align-items: flex-end;
