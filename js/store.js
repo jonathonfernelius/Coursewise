@@ -281,6 +281,9 @@
   const Tidy = {
     toKey, shift, parseKey, fmtDate, fmtTime, esc, tones, themes: THEMES, repeats: REPEATS, repeatLabel, dayNames: DAYN,
     get categories() { return state.categories; }, get state() { return state; },
+    // One saved preference controls completed-task visibility on every page.
+    visibleTasks: (tasks = state.tasks) =>
+      tasks.filter(task => state.prefs.showDone || !task.done),
     cat: n => state.categories.find(c => c.id===n), init, reload: load,
     async login(email,password) { requireDb(); await result(db.auth.signInWithPassword({email,password})); },
     async signup(p,password) {

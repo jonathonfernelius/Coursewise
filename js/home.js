@@ -21,6 +21,7 @@
   function render() {
     const today = T.toKey(new Date()), weekEnd = T.shift(7), all = T.state.tasks;
     const dueToday = all.filter(t => t.due === today);
+    const visibleToday = T.visibleTasks(dueToday);
     const open = dueToday.filter(t => !t.done), doneN = dueToday.length - open.length;
     const overdue = all.filter(t => !t.done && t.due && t.due < today);
     const week = all.filter(t => !t.done && t.due && t.due > today && t.due <= weekEnd);
@@ -39,8 +40,8 @@
           <div class="task-list">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
         <section class="card week-card"><div class="section-head"><h2>This week</h2><span class="count">${week.length}</span></div>
           <div class="task-list">${rows(week, "Your week is clear.")}</div></section>
-        <section class="card today-card"><div class="section-head"><h2>Today</h2><span class="count">${dueToday.length}</span></div>
-          <div class="task-list">${rows(dueToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
+        <section class="card today-card"><div class="section-head"><h2>Today</h2><span class="count">${visibleToday.length}</span></div>
+          <div class="task-list">${rows(visibleToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
       </div></div>`;
     if (!statusRequested) {
       statusRequested = true;

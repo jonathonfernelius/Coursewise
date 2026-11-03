@@ -53,7 +53,7 @@
             <div class="theme-grid" role="radiogroup" aria-label="Color theme">${T.themes.map(([id, name]) => `<label class="theme-opt th-${id}"><input type="radio" name="theme" value="${id}"${S.prefs.theme === id ? " checked" : ""}><i></i>${name}</label>`).join("")}</div></section>
           <section class="card"><div class="section-head"><h2>Preferences</h2></div>
             <div class="form"><div class="field"><label for="p-week">Week starts on</label><select id="p-week">${U.options([["0", "Sunday"], ["1", "Monday"]], String(ws))}</select></div>
-              <div class="switch-row"><div><label for="p-done">Show completed tasks in lists</label><small>Applies when you open the To-do page.</small></div>
+              <div class="switch-row"><div><label for="p-done">Show completed tasks</label><small>Show or hide completed tasks on Today, To-do, and Calendar.</small></div>
                 <span class="switch"><input id="p-done" type="checkbox"${S.prefs.showDone ? " checked" : ""}><span></span></span></div></div></section>
           <section class="card" id="categories"><div class="section-head"><h2>Categories</h2><span class="count">${S.categories.length}</span></div>
             <div class="cat-list">${S.categories.map(c => `<div class="cat-row t-${c.tone}"><span class="dot"></span><strong>${esc(c.name)}</strong>

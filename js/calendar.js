@@ -27,8 +27,9 @@
     for (let i = lead; i > 0; i--) cells.push({ n: prevDays - i + 1, out: true });
     for (let d = 1; d <= days; d++) cells.push({ n: d, key: T.toKey(new Date(y, m, d)) });
     for (let d = 1; cells.length % 7; d++) cells.push({ n: d, out: true });
-    const todayKey = T.toKey(now), undated = S.tasks.filter(t => !t.due);
-    const todays = S.tasks.filter(t => t.due === todayKey).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+    const visible = T.visibleTasks();
+    const todayKey = T.toKey(now), undated = visible.filter(t => !t.due);
+    const todays = visible.filter(t => t.due === todayKey).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
     const dow = [...DOW.slice(ws), ...DOW.slice(0, ws)];
 
     root.innerHTML = `<div class="container">
@@ -41,7 +42,7 @@
         <div class="cal-grid">${dow.map(d => `<div class="cal-dow">${d}</div>`).join("")}
         ${cells.map(c => {
           if (c.out) return `<div class="day out">${c.n}</div>`;
-          const ts = S.tasks.filter(t => t.due === c.key);
+            const ts = visible.filter(t => t.due === c.key);
           return `<button class="day${c.key === todayKey ? " today" : ""}" data-day="${c.key}" aria-label="${T.fmtDate(c.key)}, ${ts.length} due">${c.n}
             <span class="dots">${ts.slice(0, 4).map(t => `<i class="t-${tone(t)}${t.done ? " done" : ""}"></i>`).join("")}${ts.length > 4 ? `<em>+${ts.length - 4}</em>` : ""}</span></button>`;
         }).join("")}</div>
@@ -62,7 +63,7 @@
   }
 
   function dayDialog(key) {
-    const ts = T.state.tasks.filter(t => t.due === key), label = T.parseKey(key).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    const ts = T.visibleTasks().filter(t => t.due === key), label = T.parseKey(key).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     const d = U.modal(`<div class="dialog-body"><h2>${label}</h2><p class="muted">${ts.length} ${ts.length === 1 ? "task" : "tasks"} due</p>
       <div class="task-list">${ts.length ? ts.map(t => U.taskRow(t, { date: false, edit: false })).join("") : '<p class="empty">Nothing due this day.</p>'}</div>
       <div class="dialog-actions"><button class="btn btn-primary" id="add-day">${U.icons.plus} Add task</button><button class="btn btn-outline" data-close>Close</button></div></div>`);

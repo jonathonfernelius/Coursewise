@@ -1,17 +1,16 @@
 /* To-do page */
 (() => {
   const T = Tidy, U = T.ui, root = document.getElementById("main");
-  const collapsed = new Set(); let showDone, orderSaving = false, taskOrderSaving = false;
+  const collapsed = new Set(); let orderSaving = false, taskOrderSaving = false;
 
   function render() {
-    const S = T.state; if (showDone === undefined) showDone = !!S.prefs.showDone;
+    const S = T.state;
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>To-do</h1><p>Drag the grips to reorder lists and tasks or move tasks between lists.</p></div>
-        <div class="head-actions"><button class="pill-btn" id="done-toggle">${showDone ? "Hide done" : "Show done"}</button>
-        <button class="btn btn-outline" id="new-list">${U.icons.plus} New list</button>
+        <div class="head-actions"><button class="btn btn-outline" id="new-list">${U.icons.plus} New list</button>
         <button class="btn btn-primary" id="add">${U.icons.plus} Add task</button></div></div>
       <div class="lists">${S.lists.map(l => {
-        const items = S.tasks.filter(t => t.listId === l.id && (showDone || !t.done)), open = !collapsed.has(l.id);
+        const items = S.tasks.filter(t => t.listId === l.id && (S.prefs.showDone || !t.done)), open = !collapsed.has(l.id);
         return `<section class="card list-card" data-list-id="${T.esc(l.id)}"><div class="list-head">
           <button class="list-drag" draggable="true" data-drag-list="${T.esc(l.id)}" aria-label="Reorder ${T.esc(l.title)}" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag to reorder; use arrow keys to move">${U.icons.grip}</button>
           <button class="list-toggle" data-collapse="${l.id}" aria-expanded="${open}">${U.icons.down}<h2>${T.esc(l.title)}</h2><span class="count">${items.length}</span></button>
@@ -21,7 +20,6 @@
       }).join("")}</div></div>`;
 
     document.getElementById("add").onclick = () => U.taskDialog({ done: render });
-    document.getElementById("done-toggle").onclick = () => { showDone = !showDone; render(); };
     document.getElementById("new-list").onclick = () => nameDialog("New list", "", async v => { await T.addList(v); U.toast("List added"); render(); });
     root.querySelectorAll("[data-collapse]").forEach(b => b.onclick = () => { const id = b.dataset.collapse; collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); render(); });
     root.querySelectorAll("[data-rename]").forEach(b => b.onclick = () => { const l = S.lists.find(x => x.id === b.dataset.rename); nameDialog("Rename list", l.title, async v => { await T.renameList(l.id, v); render(); }); });
@@ -162,7 +160,7 @@
     let visibleIndex = 0;
     const ordered = [];
     for (const task of existing) {
-      if (!showDone && task.done) ordered.push(task.id);
+      if (!T.state.prefs.showDone && task.done) ordered.push(task.id);
       else if (visibleIndex < visibleIds.length) ordered.push(visibleIds[visibleIndex++]);
     }
     ordered.push(...visibleIds.slice(visibleIndex));
@@ -177,17 +175,17 @@
       const nextListId = listIds[listIndex + (key === "ArrowLeft" ? -1 : 1)];
       if (!nextListId) return;
       const targetIds = withHiddenTasks(nextListId, [
-        ...T.state.tasks.filter(item => item.listId === nextListId && (showDone || !item.done)).map(item => item.id),
+        ...T.state.tasks.filter(item => item.listId === nextListId && (T.state.prefs.showDone || !item.done)).map(item => item.id),
         taskId
       ], taskId);
       const sourceIds = withHiddenTasks(task.listId,
-        T.state.tasks.filter(item => item.listId === task.listId && (showDone || !item.done) && item.id !== taskId).map(item => item.id),
+        T.state.tasks.filter(item => item.listId === task.listId && (T.state.prefs.showDone || !item.done) && item.id !== taskId).map(item => item.id),
         taskId);
       persistTaskOrder(taskId, nextListId, targetIds, sourceIds, true);
       return;
     }
     const visibleIds = T.state.tasks
-      .filter(item => item.listId === task.listId && (showDone || !item.done))
+      .filter(item => item.listId === task.listId && (T.state.prefs.showDone || !item.done))
       .map(item => item.id);
     const index = visibleIds.indexOf(taskId), next = index + (key === "ArrowUp" ? -1 : 1);
     if (next < 0 || next >= visibleIds.length) return;
