@@ -525,6 +525,7 @@
     document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer"><div class="container footer-row">
       <span>Coursewise. Classes and life, on one short list.</span>
       <nav aria-label="Footer">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</nav></footer>`);
+    window.CoursewiseFriends?.mount();
     const rerender = () => render();
     document.addEventListener("click", e => {
       const tg = e.target.closest("[data-toggle]"), ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-delete-task]");
