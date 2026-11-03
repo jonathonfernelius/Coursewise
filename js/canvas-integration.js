@@ -1,4 +1,3 @@
-
 /*
  * Coursewise Canvas Integration
  * Connection, preview, importing, and saved selections.
@@ -11,6 +10,7 @@
   let connected = false;
   let currentSection = null;
   let previewData = null;
+  let canvasHistoryKey = null;
 
   // Choices remain available while this page is open.
   const choices = new Map();
@@ -118,6 +118,36 @@
       opacity: .7;
       margin-top: 3px;
     }
+    .cw-new-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: rgba(32, 24, 44, .55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .cw-new-modal {
+      background: var(--surface, #fff);
+      color: inherit;
+      width: min(570px, 100%);
+      max-height: min(85vh, 780px);
+      overflow: auto;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.22);
+    }
+    .cw-new-modal h3 { margin: 0 0 8px; }
+    .cw-new-item {
+      padding: 14px;
+      border: 1px solid var(--border, #e5e5e5);
+      border-radius: 12px;
+      margin: 12px 0;
+    }
+    .cw-new-item strong { display: block; }
+    .cw-new-item .cw-course-settings { margin: 10px 0 0; }
+    .cw-new-modal .cw-actions { justify-content: flex-end; }
     .cw-actions {
       display: flex;
       flex-wrap: wrap;
@@ -264,14 +294,14 @@
             : existingTask
               ? true
               : true,
-          listId: stored
-            ? stored.ListID == null
-              ? null : String(stored.ListID)
-            : existingTask?.listId || null,
-          categoryId: stored
-            ? stored.CategoryID == null
-              ? null : String(stored.CategoryID)
-            : existingTask?.categoryId || null
+          // For imported tasks, the task's current values win. This
+          // preserves edits made from the pencil icon on Today/To-do.
+          listId: existingTask
+            ? existingTask.listId
+            : stored?.ListID == null ? null : String(stored.ListID),
+          categoryId: existingTask
+            ? existingTask.categoryId
+            : stored?.CategoryID == null ? null : String(stored.CategoryID)
         });
       }
     }
@@ -293,7 +323,7 @@
     coursePreferences.set(course, preference);
   }
 
-  function renderPreview(section, events, imported) {
+  function renderPreview(section, events, imported, showNewPopup = false) {
     const container =
       section.querySelector("#cw-canvas-preview");
 
@@ -631,44 +661,23 @@
       }
     });
 
-    // Only imports checked items not already imported.
-    importButton.addEventListener("click", async () => {
-      const newItems = selectedItems().filter(
-        item => item.selected && !imported.has(item.uid)
-      );
-
-      if (!newItems.length) {
-        feedback.textContent =
-          "No new selected assignments to import. " +
-          "Use Update Selections for existing tasks.";
-        return;
-      }
-
-      if (!confirm(
-        `Import ${newItems.length} new Canvas items?`
-      )) return;
-
+    // Shared import path: the original batch button and the new-item popup
+    // both use the same database functions and save the selected categories.
+    async function importNewItems(newItems, feedbackTarget) {
       busy(true);
-      feedback.textContent = "Importing...";
-
+      feedbackTarget.textContent = "Importing...";
       try {
-        const result = await callFunction(
-          "canvas-import",
-          {
-            items: newItems.map(item => ({
-              uid: item.uid,
-              listId: item.listId,
-              categoryId: item.categoryId
-            }))
-          }
-        );
+        const result = await callFunction("canvas-import", {
+          items: newItems.map(item => ({
+            uid: item.uid,
+            listId: item.listId,
+            categoryId: item.categoryId
+          }))
+        });
 
-        // Fetch fresh mappings before saving choices.
-        const refreshed = await callFunction(
-          "canvas-selections",
-          { action: "load" }
-        );
-
+        const refreshed = await callFunction("canvas-selections", {
+          action: "load"
+        });
         imported.clear();
         for (const row of refreshed.imported || []) {
           imported.set(row.CanvasUID, String(row.TaskID));
@@ -676,25 +685,124 @@
 
         await saveSelections();
         await window.Tidy.reload();
-
-        feedback.textContent =
-          `${result.added} new assignments imported!`;
-
-        message(
-          section,
-          "Import complete! Open To-do or Calendar " +
-          "to see your assignments."
-        );
-
+        if (canvasHistoryKey) {
+          try { localStorage.setItem(canvasHistoryKey, "1"); }
+          catch { /* Private browsing can restrict local storage. */ }
+        }
+        feedbackTarget.textContent =
+          `${result.added ?? newItems.length} new assignments imported!`;
+        message(section, "Canvas assignments imported successfully.");
+        return true;
       } catch (error) {
-        feedback.textContent =
-          error.message +
+        feedbackTarget.textContent = error.message +
           " Refresh and check your task list before retrying.";
         message(section, error.message, true);
+        return false;
       } finally {
         busy(false);
       }
+    }
+
+    // Existing first-import batch workflow remains unchanged.
+    importButton.addEventListener("click", async () => {
+      const newItems = selectedItems().filter(
+        item => item.selected && !imported.has(item.uid)
+      );
+      if (!newItems.length) {
+        feedback.textContent = "No new selected assignments to import. " +
+          "Use Update Selections for existing tasks.";
+        return;
+      }
+      if (!confirm(`Import ${newItems.length} new Canvas items?`)) return;
+      if (await importNewItems(newItems, feedback)) {
+        renderPreview(section, events, imported);
+      }
     });
+
+    if (showNewPopup) {
+      const newEvents = events.filter(event =>
+        !imported.has(event.uid) && getChoice(event).selected
+      );
+      if (newEvents.length) {
+        const overlay = element("div", "", "cw-new-overlay");
+        const modal = element("section", "", "cw-new-modal");
+        modal.setAttribute("role", "dialog");
+        modal.setAttribute("aria-modal", "true");
+        modal.setAttribute("aria-label", "New Canvas assignments");
+
+        modal.appendChild(element("h3", "New Canvas assignments!"));
+        modal.appendChild(element("p",
+          `${newEvents.length} new item${newEvents.length === 1 ? "" : "s"} found. ` +
+          "Choose a list and category for each one before importing.", "muted"));
+
+        // Suggest the last-known organization of this same course when possible.
+        for (const event of newEvents) {
+          const choice = getChoice(event);
+          const other = events.find(item =>
+            item.uid !== event.uid &&
+            imported.has(item.uid) &&
+            item.course === event.course &&
+            (getChoice(item).listId || getChoice(item).categoryId)
+          );
+          if (other) {
+            const previous = getChoice(other);
+            if (!choice.listId) choice.listId = previous.listId;
+            if (!choice.categoryId) choice.categoryId = previous.categoryId;
+          }
+
+          const item = element("div", "", "cw-new-item");
+          item.appendChild(element("strong", event.title || "Untitled assignment"));
+          item.appendChild(element("div",
+            [event.course || "Unsorted", event.due || "No due date"]
+              .filter(Boolean).join(" · "), "cw-status"));
+          const settings = element("div", "", "cw-course-settings");
+          settings.appendChild(dropdown("List", listOptions,
+            choice.listId, value => { choice.listId = value || null; }));
+          settings.appendChild(dropdown("Category", categoryOptions,
+            choice.categoryId, value => { choice.categoryId = value || null; }));
+          item.appendChild(settings);
+          modal.appendChild(item);
+        }
+
+        const popupFeedback = element("p", "");
+        popupFeedback.setAttribute("role", "status");
+        const actions = element("div", "", "cw-actions");
+        const later = element("button", "Not now", "btn btn-outline");
+        later.type = "button";
+        const save = element("button", "Import assignments", "btn btn-primary");
+        save.type = "button";
+        actions.append(later, save);
+        modal.append(popupFeedback, actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        const close = () => overlay.remove();
+        later.addEventListener("click", close);
+        save.addEventListener("click", async () => {
+          save.disabled = true;
+          later.disabled = true;
+          const items = newEvents.map(event => ({
+            uid: event.uid,
+            selected: true,
+            listId: getChoice(event).listId,
+            categoryId: getChoice(event).categoryId
+          }));
+          const success = await importNewItems(items, popupFeedback);
+          if (success) {
+            close();
+            renderPreview(section, events, imported);
+          } else {
+            save.disabled = false;
+            later.disabled = false;
+          }
+        });
+        overlay.addEventListener("click", event => {
+          if (event.target === overlay) close();
+        });
+        later.focus();
+      }
+    }
+
   }
 
   async function previewCanvas(section) {
@@ -731,9 +839,23 @@
 
       previewData = { events, imported };
 
+      // Import history is based on server-saved rows, not just visible tasks.
+      // The per-user browser flag also survives deleting every assignment.
+      const { data: authData } = await client.auth.getUser();
+      canvasHistoryKey = authData?.user?.id
+        ? `coursewise-canvas-imported-${authData.user.id}` : null;
+      let hadEarlierImport = Boolean(
+        (savedResult.imported || []).length ||
+        (savedResult.choices || []).length
+      );
+      if (canvasHistoryKey) {
+        try { hadEarlierImport ||= localStorage.getItem(canvasHistoryKey) === "1"; }
+        catch { /* Browser storage might be unavailable. */ }
+      }
+
       console.time("Canvas rendering");
 
-      renderPreview(section, events, imported);
+      renderPreview(section, events, imported, hadEarlierImport);
 
       console.timeEnd("Canvas rendering");
 
