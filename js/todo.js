@@ -2,13 +2,85 @@
 (() => {
   const T = Tidy, U = T.ui, root = document.getElementById("main");
   const collapsed = new Set(); let orderSaving = false, taskOrderSaving = false;
+  const selected = new Set(); let selecting = false, deletingSelection = false;
+
+  function exitSelection() { selecting = false; selected.clear(); render(); }
+  function toggleSelected(id) {
+    if (selected.has(id)) selected.delete(id); else selected.add(id);
+    selecting = true;
+    updateSelectionUI();
+  }
+  function updateSelectionUI() {
+    const count = selected.size;
+    const bar = root.querySelector('#bulk-task-bar');
+    if (bar) {
+      bar.hidden = !selecting;
+      bar.querySelector('#bulk-selected-count').textContent = `${count} ${count === 1 ? 'task' : 'tasks'} selected`;
+      bar.querySelector('#bulk-delete').disabled = !count || deletingSelection;
+    }
+    root.querySelector('#select-tasks')?.setAttribute('aria-pressed', String(selecting));
+    root.querySelectorAll('.task[data-task-id]').forEach(row => {
+      const checked = selected.has(row.dataset.taskId);
+      row.classList.toggle('bulk-selected', selecting && checked);
+      row.classList.toggle('bulk-selectable', selecting);
+      row.setAttribute('draggable', String(!selecting));
+      row.querySelector('.bulk-checkbox')?.remove();
+      if (selecting) {
+        const indicator = document.createElement('span');
+        indicator.className = 'bulk-checkbox';
+        indicator.setAttribute('aria-hidden', 'true');
+        indicator.textContent = checked ? '✓' : '';
+        row.querySelector('.task-body')?.before(indicator);
+      }
+    });
+  }
+
+  function confirmBulkDelete() {
+    const ids = [...selected];
+    if (!ids.length || deletingSelection) return;
+    const count = ids.length;
+    const d = U.modal(`<form class="dialog-body"><h2>Delete ${count} ${count === 1 ? 'task' : 'tasks'}?</h2>
+      <p class="muted">Only the selected tasks will be deleted. This cannot be undone.</p>
+      <div class="dialog-actions"><button type="button" class="btn btn-outline" data-close>Cancel</button>
+      <button class="btn btn-danger" type="submit">${U.icons.trash} Delete ${count} ${count === 1 ? 'task' : 'tasks'}</button></div></form>`);
+    d.querySelector('form').onsubmit = e => {
+      e.preventDefault();
+      if (deletingSelection) return;
+      deletingSelection = true;
+      const button = d.querySelector('[type=submit]');
+      button.disabled = true;
+      (async () => {
+        try {
+          await T.deleteTasks(ids);
+          d.close();
+          selecting = false; selected.clear();
+          U.toast(`${count} ${count === 1 ? 'task' : 'tasks'} deleted`);
+          render();
+        } catch (error) {
+          U.toast(error.message || 'Could not delete tasks. Please try again.');
+        } finally {
+          deletingSelection = false;
+          if (button.isConnected) button.disabled = false;
+          updateSelectionUI();
+        }
+      })();
+    };
+  }
+
 
   function render() {
     const S = T.state;
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>To-do</h1><p>Drag the grips to reorder lists and tasks or move tasks between lists.</p></div>
         <div class="head-actions"><button class="btn btn-outline" id="new-list">${U.icons.plus} New list</button>
+        <button class="btn btn-outline" type="button" id="select-tasks" aria-pressed="${selecting}">${U.icons.check} ${selecting ? 'Done selecting' : 'Select tasks'}</button>
         <button class="btn btn-primary" id="add">${U.icons.plus} Add task</button></div></div>
+      <div id="bulk-task-bar" class="bulk-task-bar" role="toolbar" aria-label="Selected task actions" ${selecting ? '' : 'hidden'}>
+        <span id="bulk-selected-count" aria-live="polite">${selected.size} tasks selected</span>
+        <div class="bulk-actions"><button type="button" class="btn btn-outline" id="bulk-select-all">Select all visible</button>
+        <button type="button" class="btn btn-danger" id="bulk-delete" ${selected.size ? '' : 'disabled'}>${U.icons.trash} Delete selected</button>
+        <button type="button" class="btn btn-outline" id="bulk-cancel">Cancel</button></div>
+      </div>
       <div class="lists">${S.lists.map(l => {
         const items = S.tasks.filter(t => t.listId === l.id && (S.prefs.showDone || !t.done)), open = !collapsed.has(l.id);
         return `<section class="card list-card" data-list-id="${T.esc(l.id)}"><div class="list-head">
@@ -20,6 +92,14 @@
       }).join("")}</div></div>`;
 
     document.getElementById("add").onclick = () => U.taskDialog({ done: render });
+    root.querySelector('#select-tasks').onclick = () => selecting ? exitSelection() : (selecting = true, render());
+    root.querySelector('#bulk-cancel').onclick = exitSelection;
+    root.querySelector('#bulk-delete').onclick = confirmBulkDelete;
+    root.querySelector('#bulk-select-all').onclick = () => {
+      root.querySelectorAll('.task[data-task-id]').forEach(row => selected.add(row.dataset.taskId));
+      updateSelectionUI();
+    };
+    updateSelectionUI();
     document.getElementById("new-list").onclick = () => nameDialog("New list", "", async v => { await T.addList(v); U.toast("List added"); render(); });
     root.querySelectorAll("[data-collapse]").forEach(b => b.onclick = () => { const id = b.dataset.collapse; collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); render(); });
     root.querySelectorAll("[data-rename]").forEach(b => b.onclick = () => { const l = S.lists.find(x => x.id === b.dataset.rename); nameDialog("Rename list", l.title, async v => { await T.renameList(l.id, v); render(); }); });
@@ -30,6 +110,31 @@
       d.querySelector("#yes").onclick = e => U.run(async () => { await T.deleteList(l.id); d.close(); U.toast("List deleted"); render(); }, e.currentTarget);
     });
     const listContainer = root.querySelector(".lists");
+    // A double-click enters selection mode. A regular click selects once the mode is active.
+    listContainer.addEventListener('dblclick', e => {
+      const row = e.target.closest('.task[data-task-id]');
+      if (!row || e.target.closest('button, input, select, a, textarea')) return;
+      e.preventDefault();
+      if (!selecting) { selecting = true; selected.add(row.dataset.taskId); updateSelectionUI(); }
+      else toggleSelected(row.dataset.taskId);
+    });
+    listContainer.addEventListener('click', e => {
+      if (!selecting) return;
+      const row = e.target.closest('.task[data-task-id]');
+      if (!row) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      toggleSelected(row.dataset.taskId);
+    }, true);
+    listContainer.addEventListener('keydown', e => {
+      if (!selecting || !['Enter', ' '].includes(e.key)) return;
+      const row = e.target.closest('.task[data-task-id]');
+      if (!row) return;
+      e.preventDefault(); e.stopImmediatePropagation(); toggleSelected(row.dataset.taskId);
+    }, true);
+    root.querySelectorAll('.task[data-task-id]').forEach(row => {
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('title', 'Double-click to select multiple tasks');
+    });
     let draggedId = null, initialOrder = [], dropped = false;
     listContainer.querySelectorAll("[data-drag-list]").forEach(handle => {
       handle.addEventListener("dragstart", e => {
@@ -74,6 +179,7 @@
     });
 
     let draggedTaskId = null, draggedTaskSourceId = null, taskDropped = false;
+    listContainer.addEventListener('dragstart', e => { if (selecting) e.preventDefault(); }, true);
     listContainer.querySelectorAll("[data-drag-task]").forEach(handle => {
       handle.closest(".task").addEventListener("dragstart", e => {
         if (taskOrderSaving) { e.preventDefault(); return; }

@@ -23,7 +23,7 @@
       align-items: center;
       gap: 9px;
       font-size: 14px;
-      font-weight: 600;
+      font-weight: 400;
       margin-bottom: 8px;
     }
 
@@ -90,7 +90,7 @@
     }
     .cw-course summary {
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 400;
     }
     .cw-course-settings {
       display: flex;

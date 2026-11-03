@@ -30,8 +30,21 @@
     if(!input.value || !input.checkValidity()) throw new Error('Enter your email address above first.');
     await T.resetPassword(input.value.trim());message('If that address has an account, a password reset email is on its way.');
   });
-  // Keep auth pages available even if database setup is incomplete.
+  // Returning visitors should bypass the login form when Supabase has a
+  // valid stored session. Never redirect password-reset pages: recovery links
+  // rely on landing there, even if Supabase has already created a session.
+  // Do not cache passwords or invent an application-level login flag.
   if (!window.tidyClient) {submit.disabled=true;message('Could not load Supabase. Check your internet connection and reload.',true);}
+  else if (page==='login' || page==='signup') {
+    submit.disabled = true;
+    window.tidyClient.auth.getSession().then(({data,error}) => {
+      if (!error && data?.session) {
+        location.replace('home.html');
+      } else {
+        submit.disabled = false;
+      }
+    }).catch(() => { submit.disabled = false; });
+  }
   else if (page==='reset-password') {
     submit.disabled=true;
     window.tidyClient.auth.getSession().then(({data,error})=>{

@@ -376,6 +376,27 @@
       }
       await write(db.from('Tasks').delete().in('TaskID',[...ids]).eq('UserID',owner).select('TaskID'));
     },
+    async deleteTasks(taskIds) {
+      const ids = new Set(taskIds.map(String));
+      if (!ids.size) return;
+      const known = new Set(state.tasks.map(task => task.id));
+      if ([...ids].some(taskId => !known.has(taskId))) throw new Error('Tasks have changed. Reload and select them again.');
+      // Preserve links between surviving occurrences of a repeating task series.
+      // Only selected TaskIDs are deleted; unlike series deletion, descendants remain.
+      const byId = new Map(state.tasks.map(task => [task.id, task]));
+      for (const task of state.tasks) {
+        if (ids.has(task.id) || !ids.has(task.spawned)) continue;
+        let next = task.spawned;
+        const visited = new Set();
+        while (next && ids.has(next) && !visited.has(next)) {
+          visited.add(next);
+          next = byId.get(next)?.spawned || null;
+        }
+        await result(db.from('Tasks').update({ SpawnedTaskID: next && !ids.has(next) ? next : null })
+          .eq('TaskID', task.id).eq('UserID', owner).select('TaskID').single());
+      }
+      await write(db.from('Tasks').delete().in('TaskID', [...ids]).eq('UserID', owner).select('TaskID'));
+    },
     async toggleTask(n) {
       const t=state.tasks.find(t=>t.id===n); if (!t) throw new Error('Task not found. Reload the page.');
       let next, ended=false;

@@ -207,7 +207,25 @@
       </div>
       <div class="grid-2">
         <div class="field"><label for="f-due">Due date</label><input id="f-due" type="date" value="${task?.due || due || ""}"></div>
-        <div class="field"><label for="f-time">Time (optional)</label><input id="f-time" type="time" value="${task?.time || ""}"></div>
+        <div class="field"><span class="field-label" id="f-time-label">Time (optional)</span>
+          <div class="cw-time-wrap" id="f-time-wrap">
+            <input id="f-time" type="hidden" value="${esc(task?.time || "")}">
+            <button type="button" id="f-time-trigger" class="cw-time-trigger is-empty" aria-haspopup="dialog" aria-expanded="false" aria-controls="f-time-panel" aria-labelledby="f-time-label f-time-value">
+              <span class="cw-time-leading">${icons.clock}</span>
+              <span id="f-time-value">Set a time</span>
+              <span class="cw-time-chevron">${icons.down}</span>
+            </button>
+            <div class="cw-time-panel" id="f-time-panel" role="group" aria-label="Choose a time" hidden>
+              <div class="cw-time-entry">
+                <select id="f-time-hour" aria-label="Hour">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("")}</select>
+                <span class="cw-time-divider">:</span>
+                <select id="f-time-minute" aria-label="Minute">${Array.from({length:60},(_,i)=>`<option value="${String(i).padStart(2,"0")}">${String(i).padStart(2,"0")}</option>`).join("")}</select>
+                <select id="f-time-period" aria-label="AM or PM"><option value="AM">AM</option><option value="PM">PM</option></select>
+              </div>
+              <div class="cw-time-footer"><button type="button" id="f-time-clear">Clear</button><button type="button" id="f-time-apply">Done</button></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="field"><label for="f-rep">Repeat</label><select id="f-rep">${repOptions()}</select>
         <small class="hint${showRepeatHint(repeatVal) ? "" : " hide"}" id="rep-hint">Marking it done adds the next one automatically.</small></div>
@@ -216,6 +234,62 @@
       <div class="dialog-actions"><button class="btn btn-primary">${task ? "Update" : "Save task"}</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
       ${task ? `<button type="button" class="delete-link" id="f-del">${icons.trash} Delete task</button>` : ""}</form>`);
     const q = id => d.querySelector("#" + id);
+    // Compact anchored time menu; keep the existing 24-hour HH:MM storage format.
+    const timeInput = q("f-time"), timeWrap = q("f-time-wrap"), timePanel = q("f-time-panel");
+    const timeTrigger = q("f-time-trigger"), timeValue = q("f-time-value");
+    const hourInput = q("f-time-hour"), minuteInput = q("f-time-minute"), periodInput = q("f-time-period");
+    const fmtTime = value => {
+      const m = /^(\d{2}):(\d{2})$/.exec(value || "");
+      if (!m || +m[1] > 23 || +m[2] > 59) return "Set a time";
+      return `${+m[1] % 12 || 12}:${m[2]} ${+m[1] >= 12 ? "PM" : "AM"}`;
+    };
+    const syncTime = () => {
+      timeValue.textContent = fmtTime(timeInput.value);
+      timeTrigger.classList.toggle("is-empty", !timeInput.value);
+    };
+    const setFields = value => {
+      const m = /^(\d{2}):(\d{2})$/.exec(value || "");
+      const valid = m && +m[1] < 24 && +m[2] < 60;
+      hourInput.value = valid ? String(+m[1] % 12 || 12) : "9";
+      minuteInput.value = valid ? m[2] : "00";
+      periodInput.value = valid && +m[1] >= 12 ? "PM" : "AM";
+    };
+    const closeTime = (restoreFocus = false) => {
+      if (timePanel.hidden) return;
+      timePanel.hidden = true;
+      timeWrap.classList.remove("is-open");
+      timeTrigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) timeTrigger.focus();
+    };
+    const applyTime = () => {
+      const hour = Number(hourInput.value), minute = Number(minuteInput.value);
+      const h24 = (hour % 12) + (periodInput.value === "PM" ? 12 : 0);
+      timeInput.value = `${String(h24).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
+      timeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      syncTime(); closeTime(true);
+    };
+    setFields(timeInput.value); syncTime();
+    timeTrigger.addEventListener("click", () => {
+      if (!timePanel.hidden) { closeTime(true); return; }
+      closeCategoryMenu(); setFields(timeInput.value);
+      timePanel.hidden = false;
+      timeWrap.classList.add("is-open");
+      timeTrigger.setAttribute("aria-expanded", "true");
+      hourInput.focus();
+    });
+    q("f-time-apply").addEventListener("click", applyTime);
+    q("f-time-clear").addEventListener("click", () => {
+      timeInput.value = "";
+      timeInput.dispatchEvent(new Event("change", { bubbles: true }));
+      syncTime(); closeTime(true);
+    });
+    timePanel.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); applyTime(); } });
+    d.addEventListener("click", e => { if (!timeWrap.contains(e.target)) closeTime(); });
+    d.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !timePanel.hidden) {
+        e.preventDefault(); e.stopPropagation(); closeTime(true);
+      }
+    });
     const renderCategoryPicker = selected => { q("f-cat-picker").outerHTML = categoryPickerMarkup(selected); };
     const closeCategoryMenu = returnFocus => {
       const menu = q("f-cat-menu");
