@@ -285,7 +285,26 @@
     visibleTasks: (tasks = state.tasks) =>
       tasks.filter(task => state.prefs.showDone || !task.done),
     cat: n => state.categories.find(c => c.id===n), init, reload: load,
-    async login(email,password) { requireDb(); await result(db.auth.signInWithPassword({email,password})); },
+
+    async login(email, password) {
+      requireDb();
+
+      const signed = await result(
+        db.auth.signInWithPassword({ email, password })
+      );
+
+      // A new login should always check Canvas again.
+      if (signed?.user?.id) {
+        try {
+          sessionStorage.removeItem(
+            `cw-canvas-auto-check-${signed.user.id}`
+          );
+        } catch {
+          // Browser storage may be disabled.
+        }
+      }
+    },
+
     async signup(p,password) {
       requireDb(); return result(db.auth.signUp({ email:p.email, password, options:{
         emailRedirectTo: new URL('index.html',location.href).href,

@@ -294,6 +294,139 @@
 
   const NAV = [["home.html", "Today", "home", "home"], ["todo.html", "To-do", "todo", "list"], ["calendar.html", "Calendar", "calendar", "calendar"], ["profile.html", "Profile", "profile", "user"]];
 
+  // Check Canvas once per signed-in browser tab session.
+  // New assignments still require confirmation before importing.
+  async function checkCanvasOnSessionStart(rerender) {
+    const client = window.tidyClient;
+    if (!client) return;
+
+    try {
+      const { data: auth, error: authError } =
+        await client.auth.getUser();
+
+      if (authError || !auth?.user) return;
+
+      const sessionKey =
+        `cw-canvas-auto-check-${auth.user.id}`;
+
+      try {
+        if (sessionStorage.getItem(sessionKey) === '1') return;
+        sessionStorage.setItem(sessionKey, '1');
+      } catch {
+        // Allow the check if storage is unavailable.
+      }
+
+      const invoke = async (name, body) => {
+        const { data, error } =
+          await client.functions.invoke(name, { body });
+
+        if (error || data?.error) {
+          throw new Error(
+            data?.error || error?.message || 'Canvas unavailable'
+          );
+        }
+
+        return data || {};
+      };
+
+      const status = await invoke('canvas-connect', {
+        action: 'status'
+      });
+
+      if (!status.connected) return;
+
+      const [preview, selections] = await Promise.all([
+        invoke('canvas-preview', {}),
+        invoke('canvas-selections', { action: 'load' })
+      ]);
+
+      if (!Array.isArray(preview.events)) return;
+
+      const imported = selections.imported || [];
+
+      // Refresh existing assignment deadlines without
+      // changing their categories, lists, or completion.
+      if (imported.length) {
+        const sync = await invoke('canvas-import', {
+          action: 'sync-dates',
+          items: []
+        });
+
+        if (sync.datesUpdated > 0) {
+          await T.reload();
+          rerender();
+
+          toast(
+            `${sync.datesUpdated} Canvas due date` +
+            `${sync.datesUpdated === 1 ? '' : 's'} updated`
+          );
+        }
+      }
+
+      // Preserve the existing first-time import system.
+      let priorImportFlag = false;
+
+      try {
+        priorImportFlag = localStorage.getItem(
+          `coursewise-canvas-imported-${auth.user.id}`
+        ) === '1';
+      } catch {
+        // Private browsing may block local storage.
+      }
+
+      const history =
+        imported.length ||
+        (selections.choices || []).length ||
+        priorImportFlag;
+
+      if (!history) return;
+
+      const known = new Set(
+        imported.map(row => row.CanvasUID)
+      );
+
+      const fresh = preview.events.filter(
+        event => event?.uid && !known.has(event.uid)
+      );
+
+      if (!fresh.length) return;
+
+      // Show a reminder instead of importing automatically.
+      document.querySelector(
+        '#cw-auto-canvas-notice'
+      )?.remove();
+
+      const notice = document.createElement('aside');
+      notice.id = 'cw-auto-canvas-notice';
+      notice.setAttribute('role', 'status');
+
+      notice.style.cssText =
+        'margin:12px auto;padding:14px 18px;' +
+        'max-width:1100px;' +
+        'border:1px solid var(--border,#ccc);' +
+        'border-radius:12px';
+
+      const msg = document.createElement('span');
+      msg.textContent =
+        `${fresh.length} new Canvas item` +
+        `${fresh.length === 1 ? '' : 's'} to review. `;
+
+      const link = document.createElement('a');
+      link.href = 'profile.html#canvas';
+      link.textContent = 'Preview and categorize assignments';
+
+      notice.append(msg, link);
+
+      document.querySelector('#main')?.prepend(notice);
+
+    } catch (error) {
+      // Canvas errors never prevent Coursewise from opening.
+      console.warn(
+        'Background Canvas check skipped:', error
+      );
+    }
+  }
+
   /* page({ render }) builds header/footer, guards sign-in, and re-renders after changes */
   async function page({ render }) {
     const main = document.getElementById('main');
@@ -329,6 +462,7 @@
       }
     });
     rerender();
+    void checkCanvasOnSessionStart(rerender);
   }
 
   window.Tidy.ui = { run, icons, toast, modal, taskRow, taskDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
