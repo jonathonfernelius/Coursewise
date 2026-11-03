@@ -831,6 +831,20 @@
         throw new Error("Unexpected Canvas response.");
       }
 
+
+      // Update deadlines for all previously imported Canvas assignments.
+      // This intentionally does NOT import new items or change their tags.
+      if ((savedResult.imported || []).length) {
+        const dateSync = await callFunction("canvas-import", {
+          action: "sync-dates",
+          items: []
+        });
+        if (dateSync.datesUpdated > 0) {
+          await window.Tidy.reload();
+        }
+      }
+
+
       console.time("Canvas selections processing");
 
       const imported = await loadSelections(events, savedResult);
