@@ -434,12 +434,30 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 #f-time-apply:hover{background:var(--primary-dark)}
 
 
-/* To-do: bulk task selection */
+/* To-do: bulk task selection — persistent floating action bar */
 .bulk-task-bar[hidden]{display:none!important}
-.bulk-task-bar{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--border);background:var(--card);border-radius:1rem;box-shadow:var(--shadow-card)}
-.bulk-task-bar #bulk-selected-count{font-weight:600;font-size:.88rem}
+.bulk-task-bar{
+  position:fixed;
+  left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);
+  z-index:65;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:.75rem;flex-wrap:wrap;
+  box-sizing:border-box;width:min(960px,calc(100vw - 2rem));
+  padding:.8rem 1rem;margin:0;
+  border:1px solid var(--border);background:var(--card);
+  border-radius:1rem;
+  box-shadow:0 12px 38px #00000026,0 2px 8px #00000012;
+}
+.bulk-task-bar #bulk-selected-count{font-weight:650;font-size:.9rem;white-space:nowrap}
 .bulk-actions{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
-.bulk-task-bar .btn{padding:.55rem .75rem;font-size:.82rem}
+.bulk-task-bar .btn{padding:.55rem .75rem;font-size:.82rem;white-space:nowrap}
+@media(max-width:700px){
+  .bulk-task-bar{bottom:calc(4.85rem + env(safe-area-inset-bottom,0px));width:calc(100vw - 1rem);gap:.6rem;padding:.7rem}
+  .bulk-task-bar #bulk-selected-count{width:100%;text-align:center}
+  .bulk-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+  .bulk-actions .btn{width:100%;min-width:0;padding:.65rem .35rem;font-size:.75rem}
+}
 .task.bulk-selectable{cursor:pointer!important;user-select:none;transition:background .15s,border-color .15s}
 .task.bulk-selectable:hover{border-color:var(--primary)}
 .task.bulk-selected{border-color:var(--primary)!important;background:color-mix(in srgb,var(--primary) 9%,var(--card))!important}
@@ -447,4 +465,4 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 .task.bulk-selected .bulk-checkbox{background:var(--primary);border-color:var(--primary)}
 .task.bulk-selectable .task-drag,.task.bulk-selectable .check,.task.bulk-selectable [data-edit],.task.bulk-selectable [data-delete-task]{pointer-events:none;opacity:.45}
 .task.bulk-selectable:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-@media(max-width:600px){.bulk-task-bar{align-items:stretch}.bulk-actions{width:100%}.bulk-actions .btn{flex:1}.head-actions #select-tasks{white-space:nowrap}}
+@media(max-width:600px){.head-actions #select-tasks{white-space:nowrap}}

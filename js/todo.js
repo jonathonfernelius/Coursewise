@@ -2,7 +2,7 @@
 (() => {
   const T = Tidy, U = T.ui, root = document.getElementById("main");
   const collapsed = new Set(); let orderSaving = false, taskOrderSaving = false;
-  const selected = new Set(); let selecting = false, deletingSelection = false;
+  const selected = new Set(); let selecting = false, deletingSelection = false, completingSelection = false;
 
   function exitSelection() { selecting = false; selected.clear(); render(); }
   function toggleSelected(id) {
@@ -16,7 +16,8 @@
     if (bar) {
       bar.hidden = !selecting;
       bar.querySelector('#bulk-selected-count').textContent = `${count} ${count === 1 ? 'task' : 'tasks'} selected`;
-      bar.querySelector('#bulk-delete').disabled = !count || deletingSelection;
+      bar.querySelector('#bulk-delete').disabled = !count || deletingSelection || completingSelection;
+      bar.querySelector('#bulk-done').disabled = !count || deletingSelection || completingSelection;
     }
     root.querySelector('#select-tasks')?.setAttribute('aria-pressed', String(selecting));
     root.querySelectorAll('.task[data-task-id]').forEach(row => {
@@ -68,6 +69,41 @@
   }
 
 
+  async function markSelectedDone() {
+    if (completingSelection || deletingSelection || !selected.size) return;
+    const ids = [...selected];
+    const pending = ids.filter(id => {
+      const task = T.state.tasks.find(item => item.id === id);
+      return task && !task.done;
+    });
+    if (!pending.length) {
+      U.toast('Selected tasks are already complete');
+      exitSelection();
+      return;
+    }
+    completingSelection = true;
+    updateSelectionUI();
+    let completed = 0;
+    try {
+      // Use the existing completion action to preserve repeating-task behavior.
+      for (const id of pending) {
+        await T.toggleTask(id);
+        completed++;
+      }
+      selected.clear(); selecting = false;
+      U.toast(`${completed} ${completed === 1 ? 'task' : 'tasks'} marked as done`);
+    } catch (error) {
+      // Retain tasks that have not been processed so a retry won't toggle completed tasks off.
+      selected.clear();
+      pending.slice(completed).forEach(id => selected.add(id));
+      U.toast(error.message || 'Some tasks could not be completed. Please retry.');
+    } finally {
+      completingSelection = false;
+      render();
+    }
+  }
+
+
   function render() {
     const S = T.state;
     root.innerHTML = `<div class="container">
@@ -78,6 +114,7 @@
       <div id="bulk-task-bar" class="bulk-task-bar" role="toolbar" aria-label="Selected task actions" ${selecting ? '' : 'hidden'}>
         <span id="bulk-selected-count" aria-live="polite">${selected.size} tasks selected</span>
         <div class="bulk-actions"><button type="button" class="btn btn-outline" id="bulk-select-all">Select all visible</button>
+        <button type="button" class="btn btn-primary" id="bulk-done" ${selected.size ? '' : 'disabled'}>${U.icons.check} Mark as done</button>
         <button type="button" class="btn btn-danger" id="bulk-delete" ${selected.size ? '' : 'disabled'}>${U.icons.trash} Delete selected</button>
         <button type="button" class="btn btn-outline" id="bulk-cancel">Cancel</button></div>
       </div>
@@ -95,6 +132,7 @@
     root.querySelector('#select-tasks').onclick = () => selecting ? exitSelection() : (selecting = true, render());
     root.querySelector('#bulk-cancel').onclick = exitSelection;
     root.querySelector('#bulk-delete').onclick = confirmBulkDelete;
+    root.querySelector('#bulk-done').onclick = markSelectedDone;
     root.querySelector('#bulk-select-all').onclick = () => {
       root.querySelectorAll('.task[data-task-id]').forEach(row => selected.add(row.dataset.taskId));
       updateSelectionUI();
@@ -110,13 +148,15 @@
       d.querySelector("#yes").onclick = e => U.run(async () => { await T.deleteList(l.id); d.close(); U.toast("List deleted"); render(); }, e.currentTarget);
     });
     const listContainer = root.querySelector(".lists");
-    // A double-click enters selection mode. A regular click selects once the mode is active.
+    // Double-click once to enter selection mode; double-click again to exit.
+    // Normal single clicks toggle selection only while the mode is active.
     listContainer.addEventListener('dblclick', e => {
       const row = e.target.closest('.task[data-task-id]');
       if (!row || e.target.closest('button, input, select, a, textarea')) return;
       e.preventDefault();
-      if (!selecting) { selecting = true; selected.add(row.dataset.taskId); updateSelectionUI(); }
-      else toggleSelected(row.dataset.taskId);
+      e.stopPropagation();
+      if (selecting) exitSelection();
+      else { selecting = true; selected.add(row.dataset.taskId); updateSelectionUI(); }
     });
     listContainer.addEventListener('click', e => {
       if (!selecting) return;
