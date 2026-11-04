@@ -4,7 +4,41 @@
   const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2"/></svg>';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let data = {people:[],notifications:[],unread:0}, dialog, active='friends', opener, priorOverflow, loaded=false, busy=false, search='', searchSeq=0;
-  let error = '';
+  let error = '', feedbackTimer;
+  const SHOWN_KEY = 'cw-f-cheer-celebrations-v1';
+  function temporaryFeedback(message) {
+    clearTimeout(feedbackTimer); error = message;
+    feedbackTimer = setTimeout(() => { error = ''; if (dialog?.open) renderPanel(); }, 2400);
+  }
+  function celebrateIncoming() {
+    if (document.hidden) return;
+    const unread = (data.notifications || []).filter(n => !n.seen && Date.now() - new Date(n.created_at).getTime() < 86400000);
+    if (!unread.length) return;
+    let shown = [];
+    try { shown = JSON.parse(localStorage.getItem(SHOWN_KEY) || '[]'); if (!Array.isArray(shown)) shown = []; } catch {}
+    const keyFor = n => `${n.sender}|${n.created_at}`;
+    const fresh = unread.filter(n => !shown.includes(keyFor(n)));
+    if (!fresh.length) return;
+    // Remember all newly discovered cheers; celebrate only the newest so returning users aren't flooded.
+    shown = [...shown, ...fresh.map(keyFor)].slice(-120);
+    try { localStorage.setItem(SHOWN_KEY, JSON.stringify(shown)); } catch {}
+    showCheerToast(fresh[0]);
+  }
+  function showCheerToast(notification) {
+    document.querySelector('.cw-f-celebration')?.remove();
+    const toast = document.createElement('aside');
+    toast.className = 'cw-f-celebration';
+    toast.setAttribute('role', 'status'); toast.setAttribute('aria-live', 'polite');
+    toast.innerHTML = `<div class="cw-f-celebration-copy"><strong>👏 ${esc(notification.sender)} cheered you on!</strong><p>${esc(notification.message)}</p></div><button type="button" class="cw-f-celebration-close" aria-label="Dismiss cheer">×</button>`;
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const confetti = document.createElement('div'); confetti.className = 'cw-f-confetti'; confetti.setAttribute('aria-hidden','true');
+      confetti.innerHTML = Array.from({length:18},(_,i)=>`<i style="--i:${i};--x:${(i%9-4)*24}px;--y:${-35-(i%5)*19}px;--rot:${(i*73)%360}deg"></i>`).join('');
+      toast.prepend(confetti);
+    }
+    document.body.append(toast);
+    const timeout = setTimeout(() => toast.remove(), 5600);
+    toast.querySelector('button').addEventListener('click', () => { clearTimeout(timeout); toast.remove(); });
+  }
   const people = () => data.people || [];
   const count = state => people().filter(p=>p.state===state).length;
   const friends = () => people().filter(p=>p.state==='friend');
@@ -52,7 +86,7 @@
       ${active==='notifications'?'<button class="btn btn-outline cw-f-inbox" data-f-tab="friends">← Back to friends</button>':''}
       <div class="cw-f-results">${rows()}</div>
       <p class="cw-f-feedback" role="status" aria-live="polite">${esc(error)}</p>
-      <div class="cw-f-note">Only task completion totals are shared. Your task names and details stay private. Daily counts and cheers reset at 00:00 UTC.</div>`;
+      ${active==='friends'?'<div class="cw-f-note">Only completion totals are shared; task details stay private. Cheers reset daily at 00:00 UTC.</div>':''}`;
   }
   async function load(query='') {
     if(!db)return;
@@ -61,7 +95,7 @@
       const {data:result,error:dbError}=await db.rpc('coursewise_friends_data',{p_query:query});
       if(dbError)throw dbError;
       if(id!==searchSeq)return;
-      data=result;loaded=true;error='';
+      data=result;loaded=true;celebrateIncoming();
     }catch(e){if(id!==searchSeq)return;error='Friends are not connected yet. Run the friends SQL migration in Supabase. '+(e.message||'');loaded=true;}
     refreshCard();if(dialog?.open)renderPanel();
   }
@@ -72,11 +106,11 @@
       const {error:e}=await db.rpc('coursewise_friend_action',{p_action:type,p_target:target||null});
       if(e)throw e;
       await load(search);
-      error=type==='cheer'?'Cheer sent!':type==='add'?'Friend request sent.':type==='accept'?'Friend request accepted.':type==='cancel'?'Request canceled.':type==='decline'?'Request declined.':type==='remove'?'Friend removed.':'';
-    }catch(e){error=e.message||'Could not update friends.';}
+      temporaryFeedback(type==='cheer'?'Cheer sent!':type==='add'?'Friend request sent.':type==='accept'?'Friend request accepted.':type==='cancel'?'Request canceled.':type==='decline'?'Request declined.':type==='remove'?'Friend removed.':'');
+    }catch(e){temporaryFeedback(e.message||'Could not update friends.');}
     finally {busy=false;refreshCard();if(dialog?.open)renderPanel();}
   }
-  function open(view,trigger){active=view||'friends';opener=trigger;error='';renderPanel();if(!dialog.open){priorOverflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog.showModal();}dialog.querySelector('#cw-f-search, [data-friends-close]')?.focus();if(active==='notifications'&&data.unread)void action('read');}
+  function open(view,trigger){active=view||'friends';opener=trigger;error='';clearTimeout(feedbackTimer);renderPanel();if(!dialog.open){priorOverflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog.showModal();}dialog.querySelector('#cw-f-search, [data-friends-close]')?.focus();if(active==='notifications'&&data.unread)void action('read');}
   function mount() {
     if(dialog)return;
     const profile=document.querySelector('.site-header .avatar');if(!profile)return;
@@ -100,12 +134,14 @@
       }
       const trigger=e.target.closest('[data-friends-open]');if(trigger){open(trigger.dataset.friendsOpen,trigger);return;}
       if(e.target.closest('[data-friends-close]')){dialog.close();return;}
-      const tab=e.target.closest('[data-f-tab]');if(tab){active=tab.dataset.fTab;renderPanel();if(active==='notifications'&&data.unread)void action('read');return;}
+      const tab=e.target.closest('[data-f-tab]');if(tab){active=tab.dataset.fTab;error='';clearTimeout(feedbackTimer);renderPanel();if(active==='notifications'&&data.unread)void action('read');return;}
       const btn=e.target.closest('[data-friend-action]');if(btn){if(btn.dataset.friendAction==='remove'&&!confirm('Remove this friend?'))return;void action(btn.dataset.friendAction,btn.dataset.person);}
     });
     void load();
     // Refresh when returning to Coursewise after another friend may have sent a cheer.
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)void load(search);});
+    // Lightweight polling lets the recipient see a new cheer while Coursewise remains open.
+    setInterval(()=>{if(!document.hidden && !busy && !dialog?.open)void load(search);},30000);
   }
   window.CoursewiseFriends={mount,card:()=>`<section class="card cw-f-card" aria-label="Friends">${cardBody()}</section>`};
 })();
