@@ -45,3 +45,9 @@
 @keyframes cw-f-spark{0%{opacity:0;transform:rotate(var(--angle)) translateY(-8px) scale(.3)}20%{opacity:1}100%{opacity:0;transform:rotate(var(--angle)) translateY(-40px) scale(.7)}}
 @media(max-width:380px){.cw-f-avatar,.cw-f-home-list .cw-f-avatar{width:2.5rem;height:2.5rem;font-size:.85rem}.cw-f-person{gap:.6rem}.cw-f-person-copy .cw-f-activity{gap:.2rem;padding:.25rem .4rem;font-size:.65rem}.cw-f-cheer{padding:.4rem .5rem}}
 @media(prefers-reduced-motion:reduce){.cw-f-cheer.is-celebrating,.cw-f-sparkles i{animation:none}.cw-f-sparkles{display:none}}
+/* Live friend inbox, layered into the existing panel. */
+.cw-f-inbox{width:100%;margin:.35rem 0 .6rem;font-size:.8rem}
+.cw-f-notification{padding:1rem 0;border-bottom:1px solid var(--border)}
+.cw-f-notification strong{font-size:.85rem}.cw-f-notification p{margin:.45rem 0;font-size:.85rem}
+.cw-f-notification small{color:var(--muted-fg)}
+.cw-f-cheer:disabled{cursor:default}

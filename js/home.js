@@ -3,6 +3,24 @@
   const T = Tidy, U = T.ui, root = document.getElementById("main");
   const rows = (list, empty, o) => list.length ? list.map(t => U.taskRow(t, o)).join("") : `<p class="empty">${empty}</p>`;
 
+  const SNAPSHOT_BANK = [
+    ["You're all caught up. Enjoy the breathing room.", "Nothing left on your list. Nice work!", "You're done for today. Go enjoy yourself.", "Your to-do list is officially off duty."],
+    ["Start with one small win.", "You're so close. Finish strong!", "Just a little more to go.", "The finish line is in sight."],
+    ["One thing at a time. You've got this.", "A little progress adds up.", "Pick one and get started.", "You've got a plan. Now make it happen."],
+    ["Deep breath. One task at a time.", "You don't have to do it all at once.", "Start somewhere. Momentum will follow.", "Big list, small steps. You've got this."]
+  ];
+  function snapshotMessage(remaining, day) {
+    const tier = remaining === 0 ? 0 : remaining <= 2 ? 1 : remaining <= 5 ? 2 : 3;
+    const storageKey = `coursewise-snapshot:${day}:${tier}`;
+    let index;
+    try {
+      const saved = Number(localStorage.getItem(storageKey));
+      if (localStorage.getItem(storageKey) !== null && Number.isInteger(saved) && saved >= 0 && saved < SNAPSHOT_BANK[tier].length) index = saved;
+      else { index = Math.floor(Math.random() * SNAPSHOT_BANK[tier].length); localStorage.setItem(storageKey, String(index)); }
+    } catch { index = Math.floor(Math.random() * SNAPSHOT_BANK[tier].length); }
+    return SNAPSHOT_BANK[tier][index];
+  }
+
   let canvasStatus = null, statusRequested = false, reminderAnimated = false;
   const DISMISS_KEY = "cw-canvas-reminder-dismissed", DISMISS_DAYS = 7;
   const dismissed = () => { try { return Date.now() - Number(localStorage.getItem(DISMISS_KEY) || 0) < DISMISS_DAYS * 864e5; } catch { return false; } };
@@ -34,7 +52,7 @@
       <div class="stack">
         <section class="hero" aria-label="Daily snapshot"><small>Daily snapshot</small>
           <h2>${open.length ? `${open.length} ${open.length === 1 ? "thing" : "things"} left today.` : dueToday.length ? "Today is done." : "Your day is clear."}</h2>
-          <p>${doneN ? `${doneN} finished so far. Nice work.` : "Start with one small win."}</p>
+          <p>${T.esc(snapshotMessage(open.length, today))}</p>
           <div class="hero-stat"><strong>${open.length}</strong><span>open today</span></div></section>
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
           <div class="task-list">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
