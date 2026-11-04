@@ -43,7 +43,8 @@
   const count = state => people().filter(p=>p.state===state).length;
   const friends = () => people().filter(p=>p.state==='friend');
   const avatar = p => `<span class="cw-f-avatar" style="--friend-color:var(--${['mint','sky','grape','sun','rose','teal'][Math.abs(String(p.id).split('').reduce((n,c)=>n+c.charCodeAt(0),0))%6]})">${esc((p.name||p.handle||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase())}</span>`;
-  const activity = p => p.state==='friend' ? `<span class="cw-f-activity cw-f-activity-today"><b>${Number(p.today)||0}</b><span>${Number(p.today)===1?'task':'tasks'} done today</span></span>` : '';
+  const streakPill = p => Number(p.streak)>0 ? `<span class="cw-f-activity cw-f-activity-streak"><span aria-hidden="true">🔥</span><b>${Number(p.streak)}-day</b><span>streak</span></span>` : '';
+  const activity = p => p.state==='friend' ? `<span class="cw-f-activity-row"><span class="cw-f-activity cw-f-activity-today"><b>${Number(p.today)||0}</b><span>${Number(p.today)===1?'task':'tasks'} done today</span></span>${streakPill(p)}</span>` : '';
   const cheer = p => `<button type="button" class="cw-f-cheer${p.cheered?' is-cheered':''}" data-friend-cheer="${esc(p.id)}" aria-label="${p.cheered?'Cheered':'Cheer for'} ${esc(p.name)}" ${p.cheered?'disabled':''}><span aria-hidden="true">${p.cheered?'✓':'👏'}</span> ${p.cheered?'Cheered':'Cheer'}</button>`;
   function cardBody() {
     return `<div class="section-head"><h2>Friends <span class="count">${friends().length}</span></h2></div>
@@ -86,7 +87,7 @@
       ${active==='notifications'?'<button class="btn btn-outline cw-f-inbox" data-f-tab="friends">← Back to friends</button>':''}
       <div class="cw-f-results">${rows()}</div>
       <p class="cw-f-feedback" role="status" aria-live="polite">${esc(error)}</p>
-      ${active==='friends'?'<div class="cw-f-note">Only completion totals are shared; task details stay private. Cheers reset daily at 00:00 UTC.</div>':''}`;
+      ${active==='friends'?'<div class="cw-f-note">Only completion totals and streaks are shared; task details stay private. Streaks count days with at least one finished task. Cheers and days reset at midnight Utah time.</div>':''}`;
   }
   async function load(query='') {
     if(!db)return;

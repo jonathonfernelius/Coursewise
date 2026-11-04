@@ -204,7 +204,7 @@
 
   const db = window.tidyClient;
   const tones = ["sky", "grape", "sun", "mint", "rose", "slate", "teal", "coral", "indigo", "lime"];
-  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], canvasConnected: false });
+  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], canvasConnected: false, streak: null });
   let state = empty(), authUser, owner;
   const requireDb = () => { if (!db) throw new Error('Could not load Supabase. Check your connection and reload.'); };
   async function result(query) { const {data, error} = await query; if (error) throw new Error(error.message); return data; }
@@ -242,12 +242,14 @@
   async function load() {
     if (!owner) throw new Error('Please log in again.');
     // Keep the prior screen intact if any request fails.
-    const [profile, settings, categories, lists, tasks] = await Promise.all([
+    const [profile, settings, categories, lists, tasks, streak] = await Promise.all([
       result(db.from('User').select('UserID,FirstName,LastName,Username').eq('UserID', owner).single()),
       result(db.from('Settings').select('ColorTheme,WeekStart,ShowDone').eq('UserID', owner).single()),
       allRows('Categories','CategoryID,DisplayName,DisplayColor','CategoryID'),
       allRows('Lists','ListID,Title,SortOrder','SortOrder'),
-      allRows('Tasks','*','TaskID')
+      allRows('Tasks','*','TaskID'),
+      // Streaks are a bonus: if the migration is not applied yet, the rest of the app still loads.
+      Promise.resolve(db.rpc('coursewise_my_streak')).then(r => r.error ? null : r.data, () => null)
     ]);
     state = { signedIn: true, user: { first: profile.FirstName, last: profile.LastName, username: profile.Username, email: authUser.email || '' },
       prefs: { theme: THEMES.some(t => t[0]===settings.ColorTheme) ? settings.ColorTheme : 'green', weekStart: settings.WeekStart, showDone: settings.ShowDone },
@@ -257,7 +259,8 @@
         .filter(task => !task.CanvasExcluded)
         .map(taskFromRow)
         .sort((a,b) => a.sortOrder-b.sortOrder || a.id.localeCompare(b.id)),
-      canvasConnected: false };
+      canvasConnected: false,
+      streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null };
     if (window.CoursewiseTheme) window.CoursewiseTheme.apply(state.prefs.theme);
     else document.documentElement.dataset.theme = state.prefs.theme;
   }

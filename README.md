@@ -47,6 +47,13 @@ tasks to be added at the bottom. Users can drag lists and tasks into a saved
 order, and move tasks between lists. Run both migrations to enable both
 features; the task-order migration can also be run independently.
 
+## Applying the streaks migration
+1. Open the project's Supabase SQL Editor.
+2. Run `supabase/migrations/20261104000000_streaks.sql` once.
+3. Deploy the updated site.
+
+A streak day is any Utah-time (America/Denver) day with at least one completed task. Streaks are computed from `coursewise_completion_times`, so un-checking a task recomputes them. The migration also moves friend cheers and "done today" counts from UTC to Utah midnight.
+
 ## Verifying the Vertical Slice
 To verify that the account creation vertical slice is working:
 1. Open the website.

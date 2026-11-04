@@ -15,7 +15,7 @@
 @media(max-width:360px){.cw-f-dialog{padding:1.5rem 1rem}.cw-f-person{gap:.5rem}}
 @media(prefers-reduced-motion:reduce){.cw-f-dialog[open]{animation:none}}
 
-/* Automatic activity summaries and cheers; no activity switch or streaks. */
+/* Automatic activity summaries, streaks, and cheers; no activity switch. */
 .cw-f-home-list{margin:.8rem 0 1rem}.cw-f-home-list .cw-f-person:last-child{border-bottom:0}.cw-f-home-list .cw-f-person{padding:.8rem 0}
 .cw-f-person-copy .cw-f-activity{font-size:.72rem;color:var(--muted-fg);line-height:1.5}
 .cw-f-cheer{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;flex-shrink:0;white-space:nowrap;min-height:2.2rem;padding:.4rem .65rem;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--fg);font-size:.72rem;transition:background .15s,border-color .15s}
@@ -61,3 +61,5 @@
 @keyframes cw-f-toast-in{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:600px){.cw-f-celebration{top:4.5rem;right:1rem}}
 @media(prefers-reduced-motion:reduce){.cw-f-celebration{animation:none}.cw-f-confetti{display:none}}
+.cw-f-person-copy .cw-f-activity-row{display:flex;flex-wrap:wrap;gap:.35rem;min-width:0}
+.cw-f-person-copy .cw-f-activity-streak{background:#fdecd2;color:#8a4a0b}

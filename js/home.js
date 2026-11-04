@@ -21,6 +21,17 @@
     return SNAPSHOT_BANK[tier][index];
   }
 
+  function streakHTML() {
+    const s = T.state.streak;
+    if (!s) return "";
+    const best = s.longest > s.current ? `<span class="streak-best">Best: ${s.longest}</span>` : "";
+    if (s.current > 0) {
+      const keep = s.doneToday ? "" : `<span>Finish a task today to keep it going.</span>`;
+      return `<div class="streak-chip" role="status"><span aria-hidden="true">🔥</span><strong>${s.current}-day streak</strong>${keep}${best}</div>`;
+    }
+    return `<div class="streak-chip is-idle" role="status"><span>Finish a task today to start a streak.</span>${best}</div>`;
+  }
+
   let canvasStatus = null, statusRequested = false, reminderAnimated = false;
   const DISMISS_KEY = "cw-canvas-reminder-dismissed", DISMISS_DAYS = 7;
   const dismissed = () => { try { return Date.now() - Number(localStorage.getItem(DISMISS_KEY) || 0) < DISMISS_DAYS * 864e5; } catch { return false; } };
@@ -53,6 +64,7 @@
         <section class="hero" aria-label="Daily snapshot"><small>Daily snapshot</small>
           <h2>${open.length ? `${open.length} ${open.length === 1 ? "thing" : "things"} left today.` : dueToday.length ? "Today is done." : "Your day is clear."}</h2>
           <p>${T.esc(snapshotMessage(open.length, today))}</p>
+          ${streakHTML()}
           <div class="hero-stat"><strong>${open.length}</strong><span>open today</span></div></section>
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
           <div class="task-list">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
