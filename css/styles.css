@@ -23,7 +23,7 @@ button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 a{color:inherit}
 :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
-.container{width:min(1120px,100% - 2.5rem);margin-inline:auto}
+.container{width:min(1120px,calc(100% - 2.5rem));min-width:0;margin-inline:auto}
 .muted{color:var(--muted-fg)}
 .hide{display:none!important}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -39,7 +39,7 @@ a{color:inherit}
 .nav a:hover{color:var(--fg);background:var(--muted)}
 .nav a[aria-current=page]{background:var(--accent);color:var(--accent-fg)}
 .avatar{display:grid;place-items:center;width:2.4rem;height:2.4rem;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-family:var(--font-display);font-weight:400;text-decoration:none}
-main{flex:1;padding:2.5rem 0 4rem}
+main{flex:1;min-width:0;padding:2.5rem 0 4rem}
 .site-footer{border-top:1px solid var(--border);padding:1.75rem 0;font-size:.85rem;color:var(--muted-fg)}
 .footer-row{display:flex;flex-wrap:wrap;gap:.75rem 2rem;justify-content:space-between;align-items:center}
 .footer-row nav{display:flex;gap:1.25rem}
@@ -123,7 +123,7 @@ main{flex:1;padding:2.5rem 0 4rem}
 .task.overdue{background:var(--danger-soft);border-color:var(--danger-line)}
 .overdue-card h2{color:var(--danger)}
 .task-body{flex:1;min-width:0}
-.task-title{font-weight:500;font-size:.92rem;line-height:1.35}
+.task-title{font-weight:500;font-size:.92rem;line-height:1.35;overflow-wrap:anywhere}
 .task.done .task-title{color:var(--muted-fg);text-decoration:line-through}
 .task-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-top:.4rem;font-size:.75rem;color:var(--muted-fg)}
 .check{flex:none;display:grid;place-items:center;width:1.5rem;height:1.5rem;margin-top:.05rem;border:2px solid var(--border);border-radius:50%;background:var(--card);color:var(--primary-fg);transition:border-color .15s,background .15s}
@@ -167,6 +167,21 @@ main{flex:1;padding:2.5rem 0 4rem}
 .hero-stat span{font-size:.72rem;opacity:.85}
 .streak-chip{position:relative;z-index:1;display:inline-flex;flex-wrap:wrap;align-items:center;gap:.2rem .55rem;max-width:100%;margin-top:1rem;padding:.35rem .8rem;border-radius:999px;background:rgb(255 255 255/.16);font-size:.82rem;line-height:1.4}
 .streak-chip strong{font-weight:600}.streak-chip .streak-best{opacity:.8}.streak-chip.is-idle{background:rgb(255 255 255/.1)}
+
+/* Keep the desktop dashboard columns balanced; only their contents scroll. */
+@media (min-width:861px){
+  .stack{grid-template-rows:14rem 20rem auto}
+  .stack .hero{height:14rem;min-height:0}
+  .stack .overdue-card{display:flex;flex-direction:column;height:20rem;min-height:0}
+  .stack .overdue-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .stack .cw-f-home-column{height:35.25rem;grid-template-rows:14rem 20rem;align-content:stretch}
+  .stack .cw-f-home-column .today-card,.stack .cw-f-home-column .cw-f-card{display:flex;flex-direction:column;height:100%;min-height:0}
+  .stack .cw-f-home-column .today-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .stack .cw-f-home-column .cw-f-card{overflow:hidden}
+  .stack .cw-f-home-column .cw-f-home-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .stack .cw-f-home-column .cw-f-card-actions,.stack .cw-f-home-column .cw-f-request{flex:none}
+  .stack .cw-f-home-column .cw-f-request{margin:.3rem 0 .55rem}
+}
 
 /* To-do lists */
 .lists{display:grid;gap:1rem;max-width:52rem}
@@ -263,6 +278,7 @@ main{flex:1;padding:2.5rem 0 4rem}
 
 /* Phones and narrow windows: nav moves to the bottom */
 @media (max-width:720px){
+  .container{width:min(1120px,calc(100% - 2rem))}
   .site-header{backdrop-filter:none;background:var(--bg)}
   .header-row{min-height:3.5rem}
   .avatar{margin-left:auto}
@@ -275,6 +291,15 @@ main{flex:1;padding:2.5rem 0 4rem}
   .footer-row nav{display:none}
   .toast{bottom:calc(5.5rem + env(safe-area-inset-bottom,0px))}
   .dialog{margin-bottom:max(1rem,env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:380px){
+  .container{width:calc(100% - 1.25rem)}
+  .card{padding:1rem;border-radius:1.1rem}
+  .page-head{gap:.75rem;margin-bottom:1.2rem}
+  .head-actions{width:100%}
+  .head-actions>.btn{flex:1 1 auto;min-width:0}
+  .cw-f-card-actions .btn{min-width:0;padding-inline:.3rem;white-space:normal}
+  .cw-f-person-copy>strong{overflow-wrap:anywhere}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
