@@ -137,8 +137,26 @@ main{flex:1;padding:2.5rem 0 4rem}
 .empty{padding:1.5rem 1rem;border:1px dashed var(--border);border-radius:1rem;text-align:center;font-size:.88rem;color:var(--muted-fg)}
 
 /* Today: the daily stack */
-.stack{display:grid;grid-template-columns:1.18fr .82fr;grid-template-areas:"hero today" "overdue today" "week today";gap:1.25rem;align-items:start}
-.stack .hero{grid-area:hero}.stack .overdue-card{grid-area:overdue}.stack .week-card{grid-area:week}.stack .today-card{grid-area:today}
+.stack{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);grid-template-areas:"hero side" "overdue side" "week week";gap:1.25rem;align-items:start}
+.stack .hero{grid-area:hero}.stack .overdue-card{grid-area:overdue}.stack .week-card{grid-area:week}.stack .cw-f-home-column{grid-area:side;min-width:0}
+.week-card{min-width:0}
+.week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.65rem;align-items:start}
+.week-day{min-width:0;padding:.7rem;border:1px solid var(--border);border-radius:1rem;background:var(--bg)}
+.week-day.is-today{border-color:var(--primary);background:color-mix(in oklch,var(--accent) 45%,var(--card))}
+.week-day-heading{display:flex;align-items:center;justify-content:space-between;gap:.3rem;min-width:0}
+.week-day-heading h3{min-width:0;font-size:.82rem;font-weight:500;white-space:nowrap}
+.week-day-heading time{white-space:nowrap}
+.week-day-heading .count{flex:none;padding:.08rem .4rem;font-size:.68rem}
+.week-day-today{display:inline-flex;margin-top:.35rem;padding:.08rem .45rem;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-size:.68rem;font-weight:500}
+.week-day-list{display:grid;gap:.4rem;margin:.55rem 0 0;padding:0;list-style:none}
+.week-day-list .task{gap:.45rem;padding:.45rem;border-radius:.75rem;background:var(--card)}
+.week-day-list .task-body{min-width:0}
+.week-day-list .task-title{font-size:.78rem;overflow-wrap:anywhere}
+.week-day-list .task-meta{gap:.3rem;margin-top:.25rem;font-size:.68rem}
+.week-day-list .chip{padding:.08rem .4rem}
+.week-day-list .chip::before{width:.32rem;height:.32rem}
+.week-day-list .check{width:1.5rem;height:1.5rem}
+.week-empty{margin-top:.55rem;padding:.7rem .25rem;border:1px dashed var(--border);border-radius:.75rem;color:var(--muted-fg);font-size:.76rem;text-align:center}
 .hero{position:relative;overflow:hidden;min-height:13rem;padding:1.75rem;border-radius:1.75rem;color:var(--primary-fg);background:linear-gradient(135deg,var(--primary-dark),var(--primary));box-shadow:var(--shadow-float)}
 .hero::after{content:"";position:absolute;right:-3rem;bottom:-7rem;width:14rem;height:14rem;border-radius:50%;border:2rem solid rgb(255 255 255/.1)}
 .hero small{font-size:.8rem;opacity:.85}
@@ -217,13 +235,21 @@ main{flex:1;padding:2.5rem 0 4rem}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media (max-width:860px){
-  .stack{grid-template-columns:1fr;grid-template-areas:"hero" "today" "overdue" "week"}
+  .stack{grid-template-columns:minmax(0,1fr);grid-template-areas:"hero" "side" "overdue" "week"}
   .two-col{grid-template-columns:1fr}
   .auth{grid-template-columns:1fr}.auth-aside{padding:2rem 1.5rem}
+}
+@media (max-width:1020px){
+  .week-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (max-width:640px){
   main{padding-top:1.75rem}
   .grid-2{grid-template-columns:1fr}
+  .week-grid{grid-template-columns:minmax(0,1fr)}
+  .week-day{padding:.8rem 1rem}
+  .week-day-heading h3{font-size:.9rem}
+  .week-day-list .task-title{font-size:.88rem}
+  .week-day-list .task-meta{font-size:.75rem}
 }
 .nav .ico{display:none}
 .nav .ico svg{width:1.3rem;height:1.3rem}

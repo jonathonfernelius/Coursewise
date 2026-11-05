@@ -33,9 +33,16 @@
   }
 
   let canvasStatus = null, statusRequested = false, reminderAnimated = false;
+  let midnightTimer = null, renderedDay = null;
   const DISMISS_KEY = "cw-canvas-reminder-dismissed", DISMISS_DAYS = 7;
   const dismissed = () => { try { return Date.now() - Number(localStorage.getItem(DISMISS_KEY) || 0) < DISMISS_DAYS * 864e5; } catch { return false; } };
   const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function scheduleMidnightRefresh() {
+    clearTimeout(midnightTimer);
+    const now = new Date();
+    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    midnightTimer = setTimeout(render, nextMidnight.getTime() - now.getTime() + 100);
+  }
   // Only the first appearance animates; later re-renders (e.g. checking off a task) just draw it in place.
   function reminderHTML() {
     if (canvasStatus !== false || dismissed()) return "";
@@ -48,12 +55,33 @@
       </aside></div></div>`;
   }
   function render() {
-    const today = T.toKey(new Date()), weekEnd = T.shift(7), all = T.state.tasks;
+    const now = new Date();
+    const today = T.toKey(now), all = T.state.tasks;
+    const lastWeekDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6);
+    const weekEnd = T.toKey(lastWeekDay);
+    renderedDay = today;
+    scheduleMidnightRefresh();
     const dueToday = all.filter(t => t.due === today);
     const visibleToday = T.visibleTasks(dueToday);
     const open = dueToday.filter(t => !t.done), doneN = dueToday.length - open.length;
     const overdue = all.filter(t => !t.done && t.due && t.due < today);
-    const week = all.filter(t => !t.done && t.due && t.due > today && t.due <= weekEnd);
+    const week = T.visibleTasks(all.filter(t => t.due && t.due >= today && t.due <= weekEnd));
+    const weekDays = Array.from({ length: 7 }, (_, offset) => {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+      const key = T.toKey(date);
+      const dayLabel = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      const fullDate = date.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+      const tasks = week.filter(task => task.due === key);
+      const countLabel = `${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} due`;
+      const taskList = tasks.length
+        ? `<ul class="week-day-list" aria-label="Tasks due ${T.esc(fullDate)}">${tasks.map(task => `<li>${U.taskRow(task, { edit: false, date: false })}</li>`).join("")}</ul>`
+        : `<p class="week-empty">No tasks</p>`;
+      return `<div class="week-day${offset === 0 ? " is-today" : ""}" role="group" aria-labelledby="week-day-${offset}">
+        <div class="week-day-heading"><h3 id="week-day-${offset}"><time datetime="${key}" aria-label="${T.esc(fullDate)}">${T.esc(dayLabel)}</time></h3>
+          <span class="count" aria-label="${countLabel}">${tasks.length}</span></div>
+        ${offset === 0 ? '<span class="week-day-today">Today</span>' : ""}
+        ${taskList}</div>`;
+    }).join("");
     const date = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
     root.innerHTML = `<div class="container">
@@ -68,8 +96,8 @@
           <div class="hero-stat"><strong>${open.length}</strong><span>open today</span></div></section>
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
           <div class="task-list">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
-        <section class="card week-card"><div class="section-head"><h2>This week</h2><span class="count">${week.length}</span></div>
-          <div class="task-list">${rows(week, "Your week is clear.")}</div></section>
+        <section class="card week-card" aria-labelledby="week-heading"><div class="section-head"><h2 id="week-heading">This week</h2><span class="count" aria-label="${week.length} tasks due in the next seven days">${week.length}</span></div>
+          <div class="week-grid">${weekDays}</div></section>
         <div class="cw-f-home-column"><section class="card today-card"><div class="section-head"><h2>Today</h2><span class="count">${visibleToday.length}</span></div>
           <div class="task-list">${rows(visibleToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
         ${window.CoursewiseFriends?.card() || ""}</div>
@@ -89,5 +117,8 @@
     };
     document.getElementById("add").onclick = () => U.taskDialog({ due: today, done: render });
   }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && renderedDay !== T.toKey(new Date())) render();
+  });
   U.page({ render });
 })();
