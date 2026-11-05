@@ -21,15 +21,18 @@
     return SNAPSHOT_BANK[tier][index];
   }
 
+  const FLAME_SVG = `<svg class="flame" viewBox="0 0 24 28" aria-hidden="true"><path class="flame-outer" d="M12 1c1.2 4.6 7.5 7.4 7.5 14.2A7.5 7.5 0 0 1 12 27a7.5 7.5 0 0 1-7.5-11.8c0 2.3 1.4 3.9 3 4.3C6.8 14 9 5.5 12 1z"/><path class="flame-inner" d="M12 12c.7 2.6 3.7 4 3.7 7.3a3.7 3.7 0 0 1-7.4 0c0-1.7.9-2.7 1.7-3.2.2 1 .8 1.6 1.4 1.7C11 16.3 11.4 14 12 12z"/></svg>`;
+
   function streakHTML() {
     const s = T.state.streak;
     if (!s) return "";
     const best = s.longest > s.current ? `<span class="streak-best">Best: ${s.longest}</span>` : "";
     if (s.current > 0) {
-      const keep = s.doneToday ? "" : `<span>Finish a task today to keep it going.</span>`;
-      return `<div class="streak-chip" role="status"><span aria-hidden="true">🔥</span><strong>${s.current}-day streak</strong>${keep}${best}</div>`;
+      const state = s.doneToday ? "is-lit" : "is-risk";
+      const hint = s.doneToday ? "" : `<span class="streak-hint">Finish a task today to keep it going</span>`;
+      return `<div class="streak-bar ${state}" role="status">${FLAME_SVG}<strong>${s.current}-day streak</strong>${hint}<span class="streak-spacer"></span>${best}</div>`;
     }
-    return `<div class="streak-chip is-idle" role="status"><span>Finish a task today to start a streak.</span>${best}</div>`;
+    return `<div class="streak-bar is-idle" role="status">${FLAME_SVG}<strong>No streak yet</strong><span class="streak-hint">Finish a task today to start one</span><span class="streak-spacer"></span>${best}</div>`;
   }
 
   let canvasStatus = null, statusRequested = false, reminderAnimated = false;
@@ -89,7 +92,7 @@
         <div class="head-actions"><button class="btn btn-primary" id="add">${U.icons.plus} Add task</button></div></div>
       ${reminderHTML()}
       <div class="stack">
-        <section class="hero" aria-label="Daily snapshot"><small>Daily snapshot</small>
+        <section class="hero${T.state.streak ? ' has-streak' : ''}" aria-label="Daily snapshot"><small>Daily snapshot</small>
           <h2>${open.length ? `${open.length} ${open.length === 1 ? "thing" : "things"} left today.` : dueToday.length ? "Today is done." : "Your day is clear."}</h2>
           <p>${T.esc(snapshotMessage(open.length, today))}</p>
           ${streakHTML()}

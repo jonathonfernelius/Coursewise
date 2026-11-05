@@ -165,8 +165,21 @@ main{flex:1;min-width:0;padding:2.5rem 0 4rem}
 .hero-stat{position:absolute;top:1.6rem;right:1.75rem;text-align:right;z-index:1}
 .hero-stat strong{display:block;font-weight:600;font-family:var(--font-display);font-size:2.6rem;line-height:1}
 .hero-stat span{font-size:.72rem;opacity:.85}
-.streak-chip{position:relative;z-index:1;display:inline-flex;flex-wrap:wrap;align-items:center;gap:.2rem .55rem;max-width:100%;margin-top:1rem;padding:.35rem .8rem;border-radius:999px;background:rgb(255 255 255/.16);font-size:.82rem;line-height:1.4}
-.streak-chip strong{font-weight:600}.streak-chip .streak-best{opacity:.8}.streak-chip.is-idle{background:rgb(255 255 255/.1)}
+/* Streak bar: footer strip inside the hero */
+.hero.has-streak{padding-bottom:4.4rem}
+.streak-bar{position:absolute;left:0;right:0;bottom:0;z-index:1;display:flex;flex-wrap:wrap;align-items:center;gap:.15rem .6rem;padding:.8rem 1.75rem;border-top:1px solid rgb(255 255 255/.2);background:rgb(0 0 0/.1);font-size:.85rem;line-height:1.4}
+.streak-bar strong{font-weight:600}
+.streak-spacer{flex:1}
+.streak-hint{color:#ffe3b0}
+.streak-best{opacity:.85;font-size:.78rem}
+.streak-bar .flame{width:1.5rem;height:1.7rem;flex:none;transform-origin:50% 90%;overflow:visible}
+.flame-outer{fill:#ffb23e}.flame-inner{fill:#fff3c4}
+.streak-bar.is-lit .flame{filter:drop-shadow(0 0 .45rem rgb(255 170 60/.8));animation:flame-flicker 2.4s ease-in-out infinite}
+.streak-bar.is-risk .flame{opacity:.8}.streak-bar.is-risk .flame-outer{fill:#e99a45}.streak-bar.is-risk .flame-inner{fill:#f6d9a6}
+.streak-bar.is-idle .flame-outer{fill:none;stroke:rgb(255 255 255/.55);stroke-width:1.4;stroke-dasharray:2.5 2.5}.streak-bar.is-idle .flame-inner{display:none}
+@keyframes flame-flicker{0%,100%{transform:scale(1) rotate(0)}30%{transform:scale(1.05,1.08) rotate(-2deg)}60%{transform:scale(.98,1.03) rotate(2deg)}}
+@media (prefers-reduced-motion:reduce){.streak-bar.is-lit .flame{animation:none}}
+@media (max-width:30rem){.streak-bar{padding:.8rem 1.25rem}}
 
 /* Keep the desktop dashboard columns balanced; only their contents scroll. */
 @media (min-width:861px){
@@ -520,3 +533,17 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 .task.bulk-selectable .task-drag,.task.bulk-selectable .check,.task.bulk-selectable [data-edit],.task.bulk-selectable [data-delete-task]{pointer-events:none;opacity:.45}
 .task.bulk-selectable:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 @media(max-width:600px){.head-actions #select-tasks{white-space:nowrap}}
+
+
+/* Profile streak highlights */
+.cw-profile-streak-card .section-head{margin-bottom:.25rem}
+.cw-profile-streak-heading-icon{font-size:1.25rem;color:var(--primary)}
+.cw-profile-streak-subtitle{font-size:.85rem;margin:.25rem 0 1.15rem}
+.cw-profile-streak-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.cw-profile-streak-stat{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:1.35rem .45rem;background:var(--muted);border-radius:1.15rem;text-align:center}
+.cw-profile-streak-icon{font-size:1.4rem}
+.cw-profile-streak-stat strong{font-size:2rem;line-height:1.2;font-weight:650;font-variant-numeric:tabular-nums;color:var(--fg)}
+.cw-profile-streak-stat>span:last-child{font-size:.78rem;color:var(--muted-fg)}
+.cw-profile-streak-message{font-size:.83rem;margin:1rem 0 .45rem;color:var(--fg)}
+.cw-profile-streak-footnote{font-size:.74rem;line-height:1.5;color:var(--muted-fg);margin:0}
+

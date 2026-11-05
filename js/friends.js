@@ -4,7 +4,7 @@
   const db = window.tidyClient;
   const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2"/></svg>';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let data = {people:[],notifications:[],unread:0}, dialog, active='friends', opener, priorOverflow, loaded=false, busy=false, search='', searchSeq=0;
+  let data = {people:[],notifications:[],unread:0}, dialog, active='friends', opener, priorOverflow, loaded=false, busy=false, search='', searchSeq=0, detailId=null;
   let error = '', feedbackTimer, refreshInFlight = false, lastDataFingerprint = '';
   const REFRESH_MS = 8000;
   const SHOWN_KEY = 'cw-f-cheer-celebrations-v1';
@@ -103,24 +103,6 @@
     </span>
   `;
 
-  const streakPill = p => Number(p.streak)>0
-    ? `<span class="cw-f-activity cw-f-activity-streak">
-         <span aria-hidden="true">🔥</span>
-         <b>${Number(p.streak)}-day</b>
-         <span>streak</span>
-       </span>`
-    : '';
-
-  const activity = p => p.state==='friend'
-    ? `<span class="cw-f-activity-row">
-         <span class="cw-f-activity cw-f-activity-today">
-           <b>${Number(p.today)||0}</b>
-           <span>${Number(p.today)===1?'task':'tasks'} done today</span>
-         </span>
-         ${streakPill(p)}
-       </span>`
-    : '';
-
   const cheer = p => `
     <button
       type="button"
@@ -147,8 +129,7 @@
                 <div class="cw-f-person">
                   ${avatar(p)}
                   <div class="cw-f-person-copy">
-                    <strong>${esc(p.name)}</strong>
-                    ${activity(p)}
+                    <button type="button" class="cw-f-person-link" data-friend-detail="${esc(p.id)}">${esc(p.name)}</button>
                   </div>
                   ${cheer(p)}
                 </div>
@@ -237,11 +218,11 @@
       <div class="cw-f-person">
         ${avatar(p)}
         <div class="cw-f-person-copy">
-          <strong>${esc(p.name)}</strong>
+          <button type="button" class="cw-f-person-link" data-friend-detail="${esc(p.id)}">${esc(p.name)}</button>
           <span>@${esc(p.handle)}</span>
           ${
             p.state==='friend'
-              ? activity(p)
+              ? ''
               : active==='add'
                 ? mutualLabel(p)
                 : ''
@@ -300,8 +281,22 @@
         }</div>`;
   }
 
+  function friendDetail(p) {
+    const current = Math.max(0, Number(p.streak) || 0);
+    const today = Math.max(0, Number(p.today) || 0);
+    return `<button type="button" class="cw-f-back" data-friend-back>← Back to friends</button>
+      <div class="cw-f-detail-profile">${avatar(p)}<h3>${esc(p.name)}</h3><p>@${esc(p.handle)}</p></div>
+      <div class="cw-f-detail-stats">
+        <div class="cw-f-detail-stat"><span class="cw-f-detail-stat-icon" aria-hidden="true">🔥</span><strong>${current}</strong><span>Current streak</span></div>
+        <div class="cw-f-detail-stat"><span class="cw-f-detail-stat-icon cw-f-detail-stat-check" aria-hidden="true">✓</span><strong>${today}</strong><span>Tasks done today</span></div>
+      </div>
+      <div class="cw-f-detail-cheer">${cheer(p)}</div>`;
+  }
+
   function renderPanel() {
     if(!dialog)return;
+    const detail=detailId && friends().find(p=>String(p.id)===String(detailId));
+    if(detailId && !detail) detailId=null;
 
     dialog.innerHTML=`
       <div class="cw-f-panel-head">
@@ -312,7 +307,8 @@
         <button class="icon-btn" data-friends-close aria-label="Close friends">×</button>
       </div>
 
-      <p class="cw-f-subtitle">Make room for your people.</p>
+       ${detail ? friendDetail(detail) : `
+       <p class="cw-f-subtitle">Make room for your people.</p>
 
       <div class="cw-f-tabs" aria-label="Friends views">
         ${
@@ -363,12 +359,13 @@
       ${
         active==='friends'
           ? `<div class="cw-f-note">
-               Only completion totals and streaks are shared; task details stay private.
-               Streaks count days with at least one finished task.
+               Open a friend to see their current streak and how many tasks they've finished today.
+               Individual task details stay private. Streaks count days with at least one finished task.
                Cheers and days reset at midnight Utah time.
              </div>`
           : ''
       }
+       `}
     `;
   }
 
@@ -451,6 +448,7 @@
   }
 
   function open(view,trigger) {
+    detailId=null;
     active=view||'friends';
     opener=trigger;
     error='';
@@ -554,6 +552,25 @@
         return;
       }
 
+      const detailButton=e.target.closest('[data-friend-detail]');
+      if(detailButton) {
+        detailId=detailButton.dataset.friendDetail;
+        active='friends';
+        if(!dialog.open) {
+          opener=detailButton;
+          priorOverflow=document.body.style.overflow;
+          document.body.style.overflow='hidden';
+          dialog.showModal();
+        }
+        renderPanel();
+        dialog.querySelector('[data-friend-back]')?.focus();
+        return;
+      }
+      if(e.target.closest('[data-friend-back]')) {
+        detailId=null;active='friends';renderPanel();
+        dialog.querySelector('[data-f-tab="friends"]')?.focus();
+        return;
+      }
       const trigger=e.target.closest('[data-friends-open]');
       if(trigger) {
         open(trigger.dataset.friendsOpen,trigger);
@@ -567,6 +584,7 @@
 
       const tab=e.target.closest('[data-f-tab]');
       if(tab) {
+        detailId=null;
         active=tab.dataset.fTab;
         error='';
         clearTimeout(feedbackTimer);

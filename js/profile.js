@@ -31,6 +31,12 @@
 
   function render() {
     const S = T.state, u = S.user, ws = S.prefs.weekStart;
+    const streak = S.streak;
+    const streakMarkup = streak ? `<div class="cw-profile-streak-grid">
+      <div class="cw-profile-streak-stat"><span class="cw-profile-streak-icon" aria-hidden="true">🔥</span><strong>${streak.current}</strong><span>Current streak</span></div>
+      <div class="cw-profile-streak-stat"><span class="cw-profile-streak-icon" aria-hidden="true">🏆</span><strong>${streak.longest}</strong><span>Best streak</span></div>
+    </div><p class="cw-profile-streak-message">${streak.doneToday ? 'You did it today! Keep the momentum going.' : streak.current ? 'Complete one task today to keep your streak going.' : 'Complete a task to start your streak.'}</p>`
+      : `<p class="muted cw-profile-streak-loading">Streaks are unavailable right now. Check that the streaks migration is installed.</p>`;
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>Profile</h1><p>Your account, preferences, categories and Canvas connection.</p></div>
         <div class="head-actions"><button class="btn btn-outline" id="logout">Log out</button></div></div>
@@ -40,6 +46,13 @@
             <h2>${esc(u.first)} ${esc(u.last)}</h2><p class="muted">${esc(u.email)}</p></section>
           <section class="card" id="canvas"><div class="section-head"><h2>Canvas</h2></div>
             <p class="muted">Not connected. Canvas assignment import is coming later.</p></section>
+          <section class="card cw-profile-streak-card" aria-label="Your streaks">
+            <div class="section-head"><h2>Your streaks</h2><span class="cw-profile-streak-heading-icon" aria-hidden="true">✦</span></div>
+            <p class="muted cw-profile-streak-subtitle">A little progress every day adds up.</p>
+            ${streakMarkup}
+            <p class="cw-profile-streak-footnote">Complete at least one task a day to build your streak.</p>
+          </section>
+
         </div>
         <div class="col">
           <section class="card"><div class="section-head"><h2>Account</h2></div>

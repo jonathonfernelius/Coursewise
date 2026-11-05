@@ -64,3 +64,24 @@
 @media(prefers-reduced-motion:reduce){.cw-f-celebration{animation:none}.cw-f-confetti{display:none}}
 .cw-f-person-copy .cw-f-activity-row{display:flex;flex-wrap:wrap;gap:.35rem;min-width:0}
 .cw-f-person-copy .cw-f-activity-streak{background:#fdecd2;color:#8a4a0b}
+
+/* Friend streaks live on the friend detail screen, never in list rows. */
+.cw-f-person-link{display:inline;text-align:left;justify-self:start;padding:0;border:0;background:none;color:var(--fg);font:inherit;font-size:.85rem;font-weight:550;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
+.cw-f-person-link:hover{text-decoration:underline;text-underline-offset:3px;color:var(--primary)}
+.cw-f-person-link:focus-visible,.cw-f-back:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:3px}
+.cw-f-back{border:0;background:transparent;color:var(--muted-fg);font:inherit;font-size:.8rem;cursor:pointer;margin:.7rem 0 1.4rem;padding:.2rem}
+.cw-f-detail-profile{text-align:center;display:grid;justify-items:center;gap:.45rem;padding:.4rem 0 1.5rem}
+.cw-f-detail-profile .cw-f-avatar{height:4.5rem;width:4.5rem;font-size:1.4rem}
+.cw-f-detail-profile h3{font-size:1.35rem;font-weight:600;margin:.4rem 0 0;color:var(--fg)}
+.cw-f-detail-profile p{font-size:.83rem;color:var(--muted-fg);margin:0}
+.cw-f-detail-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.cw-f-detail-stat{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.35rem;padding:1.2rem .4rem;border-radius:1rem;background:var(--muted)}
+.cw-f-detail-stat-icon{display:flex;align-items:center;justify-content:center;min-height:1.4rem;font-size:1.3rem;color:var(--primary)}
+.cw-f-detail-stat strong{font-size:1.8rem;font-weight:650;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--fg)}
+.cw-f-detail-stat>span:last-child{font-size:.72rem;color:var(--muted-fg)}
+.cw-f-detail-hint{font-size:.75rem;color:var(--muted-fg);line-height:1.5;margin:1.2rem 0}
+.cw-f-detail-cheer{text-align:center;margin-top:1rem}
+.cw-f-detail-cheer .cw-f-cheer{padding:.7rem 1.35rem}
+
+/* Two glanceable progress cards, scoped to friend details only. */
+.cw-f-detail-stat-check{color:#287e5a;font-weight:700;font-size:1.45rem}
