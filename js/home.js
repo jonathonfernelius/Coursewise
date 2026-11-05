@@ -95,11 +95,11 @@
           ${streakHTML()}
           <div class="hero-stat"><strong>${open.length}</strong><span>open today</span></div></section>
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
-          <div class="task-list">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
+          <div class="task-list${overdue.length ? " has-tasks" : ""}">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
         <section class="card week-card" aria-labelledby="week-heading"><div class="section-head"><h2 id="week-heading">This week</h2><span class="count" aria-label="${week.length} tasks due in the next seven days">${week.length}</span></div>
           <div class="week-grid">${weekDays}</div></section>
         <div class="cw-f-home-column"><section class="card today-card"><div class="section-head"><h2>Today</h2><span class="count">${visibleToday.length}</span></div>
-          <div class="task-list">${rows(visibleToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
+          <div class="task-list${visibleToday.length ? " has-tasks" : ""}">${rows(visibleToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
         ${window.CoursewiseFriends?.card() || ""}</div>
       </div></div>`;
     if (!statusRequested) {

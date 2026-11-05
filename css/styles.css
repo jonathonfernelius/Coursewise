@@ -174,6 +174,7 @@ main{flex:1;min-width:0;padding:2.5rem 0 4rem}
   .stack .hero{height:14rem;min-height:0}
   .stack .overdue-card{display:flex;flex-direction:column;height:20rem;min-height:0}
   .stack .overdue-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .stack .overdue-card>.task-list.has-tasks,.stack .cw-f-home-column .today-card>.task-list.has-tasks{align-content:start}
   .stack .cw-f-home-column{height:35.25rem;grid-template-rows:14rem 20rem;align-content:stretch}
   .stack .cw-f-home-column .today-card,.stack .cw-f-home-column .cw-f-card{display:flex;flex-direction:column;height:100%;min-height:0}
   .stack .cw-f-home-column .today-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
