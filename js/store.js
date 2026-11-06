@@ -5,7 +5,15 @@
   const shift = n => { const d = new Date(); d.setDate(d.getDate() + n); return toKey(d); };
   const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
   const fmtDate = k => parseKey(k).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const fmtTime = t => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${h % 12 || 12}:${pad(m)} ${h >= 12 ? "PM" : "AM"}`; };
+  // 12-hour or 24-hour ("military") display. Times are always stored as 24-hour HH:MM.
+  const TIME_KEY = "coursewise-time-format";
+  let timeFormat = "12";
+  try { if (localStorage.getItem(TIME_KEY) === "24") timeFormat = "24"; } catch {}
+  const fmtTime = t => {
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    return timeFormat === "24" ? `${pad(h)}:${pad(m)}` : `${h % 12 || 12}:${pad(m)} ${h >= 12 ? "PM" : "AM"}`;
+  };
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const REPEATS = { daily: "Every day", weekdays: "Every weekday", weekly: "Every week", monthly: "Every month" };
   const THEMES = [["green", "Green"], ["teal", "Teal"], ["blue", "Blue"], ["purple", "Purple"], ["pink", "Pink"], ["orange", "Orange"]];
@@ -239,20 +247,46 @@
       if (batch.length < 1000) return rows;
     }
   }
+  // Appearance is optional: if the column has not been added yet, load the rest of the settings as before.
+  async function loadSettings() {
+    const base = 'ColorTheme,WeekStart,ShowDone';
+    let failure;
+    // Newer columns are optional so the app keeps working until their SQL has been run.
+    for (const extra of ['Appearance,TimeFormat', 'Appearance', 'TimeFormat', '']) {
+      const r = await db.from('Settings').select(extra ? `${base},${extra}` : base).eq('UserID', owner).single();
+      if (!r.error) return r.data;
+      failure = r.error;
+    }
+    throw new Error(failure.message);
+  }
+  const validMode = m => m === 'light' || m === 'dark' ? m : null;
+  // Best effort: a failed save must never interrupt the app; the device still remembers the choice.
+  async function saveAppearance(mode) {
+    if (!owner || !validMode(mode)) return;
+    try { await db.from('Settings').update({ Appearance: mode }).eq('UserID', owner); } catch {}
+  }
+  document.addEventListener('coursewise:appearance', e => {
+    if (state.prefs) state.prefs.appearance = validMode(e.detail?.mode);
+    void saveAppearance(e.detail?.mode);
+  });
   async function load() {
     if (!owner) throw new Error('Please log in again.');
     // Keep the prior screen intact if any request fails.
     const [profile, settings, categories, lists, tasks, streak] = await Promise.all([
       result(db.from('User').select('UserID,FirstName,LastName,Username').eq('UserID', owner).single()),
-      result(db.from('Settings').select('ColorTheme,WeekStart,ShowDone').eq('UserID', owner).single()),
+      loadSettings(),
       allRows('Categories','CategoryID,DisplayName,DisplayColor','CategoryID'),
       allRows('Lists','ListID,Title,SortOrder','SortOrder'),
       allRows('Tasks','*','TaskID'),
       // Streaks are a bonus: if the migration is not applied yet, the rest of the app still loads.
       Promise.resolve(db.rpc('coursewise_my_streak')).then(r => r.error ? null : r.data, () => null)
     ]);
+    if (settings.TimeFormat === '12' || settings.TimeFormat === '24') {
+      timeFormat = settings.TimeFormat;
+      try { localStorage.setItem(TIME_KEY, timeFormat); } catch {}
+    }
     state = { signedIn: true, user: { first: profile.FirstName, last: profile.LastName, username: profile.Username, email: authUser.email || '' },
-      prefs: { theme: THEMES.some(t => t[0]===settings.ColorTheme) ? settings.ColorTheme : 'green', weekStart: settings.WeekStart, showDone: settings.ShowDone },
+      prefs: { theme: THEMES.some(t => t[0]===settings.ColorTheme) ? settings.ColorTheme : 'green', weekStart: settings.WeekStart, showDone: settings.ShowDone, appearance: validMode(settings.Appearance), timeFormat },
       categories: categories.map(c => ({id:id(c.CategoryID),name:c.DisplayName,tone:tones.includes(c.DisplayColor)?c.DisplayColor:'slate'})),
       lists: lists.map(l => ({id:id(l.ListID),title:l.Title,order:l.SortOrder})),
       tasks: tasks
@@ -263,6 +297,12 @@
       streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null };
     if (window.CoursewiseTheme) window.CoursewiseTheme.apply(state.prefs.theme);
     else document.documentElement.dataset.theme = state.prefs.theme;
+    // The account's saved light/dark mode wins. If the account has none yet, keep this device's mode and save it.
+    const A = window.CoursewiseAppearance;
+    if (A) {
+      if (state.prefs.appearance) A.set(state.prefs.appearance);
+      else if ('Appearance' in settings) { state.prefs.appearance = A.get(); void saveAppearance(state.prefs.appearance); }
+    }
   }
   async function init() {
     requireDb();
@@ -282,7 +322,7 @@
   }
   async function write(query) { await result(query); await refreshAfterSave(); }
   const Tidy = {
-    toKey, shift, parseKey, fmtDate, fmtTime, esc, tones, themes: THEMES, repeats: REPEATS, repeatLabel, dayNames: DAYN,
+    toKey, shift, parseKey, fmtDate, fmtTime, timeFormat: () => timeFormat, esc, tones, themes: THEMES, repeats: REPEATS, repeatLabel, dayNames: DAYN,
     get categories() { return state.categories; }, get state() { return state; },
     // One saved preference controls completed-task visibility on every page.
     visibleTasks: (tasks = state.tasks) =>
@@ -321,7 +361,15 @@
       await write(db.from('User').update({FirstName:p.first,LastName:p.last,Username:p.username}).eq('UserID',owner).select('UserID').single());
     },
     async setPrefs(p) {
+      if ('timeFormat' in p) {
+        timeFormat = p.timeFormat === '24' ? '24' : '12';
+        try { localStorage.setItem(TIME_KEY, timeFormat); } catch {}
+        if (state.prefs) state.prefs.timeFormat = timeFormat;
+        // Best effort: if the column is not set up yet, the choice still works on this device.
+        try { await db.from('Settings').update({ TimeFormat: timeFormat }).eq('UserID', owner); } catch {}
+      }
       const row={}; if ('theme' in p) row.ColorTheme=p.theme; if ('weekStart' in p) row.WeekStart=p.weekStart; if ('showDone' in p) row.ShowDone=p.showDone;
+      if (!Object.keys(row).length) return;
       await write(db.from('Settings').update(row).eq('UserID',owner).select('UserID').single());
     },
     async addCategory(name,tone) {

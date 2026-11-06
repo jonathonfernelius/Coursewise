@@ -71,7 +71,7 @@
 .cw-f-person-link:focus-visible,.cw-f-back:focus-visible{outline:2px solid var(--primary);outline-offset:4px;border-radius:3px}
 .cw-f-back{border:0;background:transparent;color:var(--muted-fg);font:inherit;font-size:.8rem;cursor:pointer;margin:.7rem 0 1.4rem;padding:.2rem}
 .cw-f-detail-profile{text-align:center;display:grid;justify-items:center;gap:.45rem;padding:.4rem 0 1.5rem}
-.cw-f-detail-profile .cw-f-avatar{height:4.5rem;width:4.5rem;font-size:1.4rem}
+.cw-f-detail-profile .cw-f-avatar{height:8rem;width:8rem;font-size:2.4rem}
 .cw-f-detail-profile h3{font-size:1.35rem;font-weight:600;margin:.4rem 0 0;color:var(--fg)}
 .cw-f-detail-profile p{font-size:.83rem;color:var(--muted-fg);margin:0}
 .cw-f-detail-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
@@ -85,3 +85,24 @@
 
 /* Two glanceable progress cards, scoped to friend details only. */
 .cw-f-detail-stat-check{color:#287e5a;font-weight:700;font-size:1.45rem}
+
+/* Tappable avatars + profile photo that enlarges inside the panel */
+.cw-f-avatar-btn{display:block;flex-shrink:0;padding:0;border:0;background:none;border-radius:50%;line-height:0;cursor:pointer;max-width:100%}
+.cw-f-avatar-btn:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+.cw-f-avatar-zoom{cursor:zoom-in}
+.cw-f-avatar-zoom.is-open{cursor:zoom-out}
+.cw-f-detail-profile .cw-f-avatar{box-shadow:0 0 0 4px var(--card),0 0 0 6px color-mix(in oklch,var(--friend-color) 30%,transparent)}
+.cw-f-detail-profile .cw-f-avatar-zoom .cw-f-avatar{transition:width .25s ease,height .25s ease}
+.cw-f-detail-profile .cw-f-avatar-zoom.is-open .cw-f-avatar{width:min(calc(100vw - 3rem),22rem);height:min(calc(100vw - 3rem),22rem)}
+[data-friend-row]{cursor:pointer}
+@media(prefers-reduced-motion:reduce){.cw-f-detail-profile .cw-f-avatar-zoom .cw-f-avatar{transition:none}}
+
+/* Smoother panel open/close: eased slide plus backdrop fade */
+.cw-f-dialog[open]{animation:cw-f-enter .32s cubic-bezier(.22,1,.36,1)}
+.cw-f-dialog[open]::backdrop{animation:cw-f-fade-in .32s ease-out}
+.cw-f-dialog.is-closing{animation:cw-f-exit .24s cubic-bezier(.4,0,1,1) forwards;pointer-events:none}
+.cw-f-dialog.is-closing::backdrop{animation:cw-f-fade-out .24s ease-in forwards}
+@keyframes cw-f-exit{from{transform:translateX(0)}to{transform:translateX(100%)}}
+@keyframes cw-f-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes cw-f-fade-out{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.cw-f-dialog[open],.cw-f-dialog[open]::backdrop,.cw-f-dialog.is-closing,.cw-f-dialog.is-closing::backdrop{animation:none}}

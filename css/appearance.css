@@ -1,0 +1,52 @@
+/* Appearance keeps the chosen accent hue and existing component tokens. */
+:root { color-scheme: light; }
+:root[data-appearance="dark"] {
+  color-scheme: dark;
+  --bg: oklch(.19 .012 var(--hue));
+  --card: oklch(.235 .014 var(--hue));
+  --fg: oklch(.94 .008 var(--hue));
+  --muted: oklch(.285 .015 var(--hue));
+  --muted-fg: oklch(.74 .015 var(--hue));
+  --secondary: oklch(.30 .025 var(--hue));
+  --accent: oklch(.34 .04 var(--hue));
+  --accent-fg: oklch(.91 .035 var(--hue));
+  --primary: oklch(.76 var(--pc) calc(var(--hue) + 8));
+  --primary-dark: oklch(.83 calc(var(--pc) - .01) calc(var(--hue) + 10));
+  --primary-fg: oklch(.19 .025 var(--hue));
+  --border: oklch(.36 .017 var(--hue));
+  --ring: oklch(.79 .09 calc(var(--hue) + 8));
+  --destructive: oklch(.77 .14 22);
+  --danger: oklch(.79 .12 25);
+  --danger-soft: oklch(.29 .045 20);
+  --danger-line: oklch(.48 .08 22);
+  --warning: oklch(.8 .12 70);
+  --warning-text: oklch(.83 .10 70);
+  --sky: oklch(.77 .10 235); --grape: oklch(.78 .11 305);
+  --sun: oklch(.8 .12 68); --mint: oklch(.77 .10 168);
+  --rose: oklch(.78 .12 10); --slate: oklch(.74 .02 160);
+  --teal: oklch(.77 .09 195); --coral: oklch(.79 .12 38);
+  --indigo: oklch(.77 .12 270); --lime: oklch(.78 .12 125);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / .12), 0 8px 24px rgb(0 0 0 / .12);
+  --shadow-float: 0 10px 30px rgb(0 0 0 / .3);
+}
+.appearance-field { margin-bottom:1.3rem; }
+.appearance-accent-label { font-family:var(--font-sans);font-size:.85rem;margin-bottom:.8rem; }
+[data-appearance="dark"] .auth-aside { background:var(--secondary);color:var(--fg); }
+[data-appearance="dark"] .auth-status.error { color:var(--danger); }
+[data-appearance="dark"] .day.out { color:var(--muted-fg); }
+[data-appearance="dark"] .switch input:not(:checked) + span { background:var(--border); }
+[data-appearance="dark"] .bulk-checkbox { color:var(--primary-fg); }
+[data-appearance="dark"] .cw-f-person-copy .cw-f-activity-today { background:#203e30;color:#a2e6ba; }
+[data-appearance="dark"] .cw-f-person-copy .cw-f-activity-streak { background:#46351f;color:#ffcf8f; }
+[data-appearance="dark"] .cw-f-detail-stat-check { color:#a2e6ba; }
+[data-appearance="dark"] dialog::backdrop { background:rgb(0 0 0 / .6); }
+
+/* Native radio controls provide arrow-key navigation and a single selected mode. */
+.appearance-options { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem; }
+.appearance-option { position:relative;cursor:pointer;min-width:0; }
+.appearance-option input { position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer; }
+.appearance-option-face { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;min-height:108px;padding:1.1rem .5rem;border:1px solid var(--border);border-radius:1rem;background:var(--card);color:var(--muted-fg);font-size:.85rem;transition:background .15s,border-color .15s,color .15s; }
+.appearance-option-face svg { width:28px;height:28px; }
+.appearance-option:hover .appearance-option-face { background:var(--muted); }
+.appearance-option input:checked + .appearance-option-face { background:var(--accent);border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary);color:var(--accent-fg);font-weight:500; }
+.appearance-option input:focus-visible + .appearance-option-face { outline:2px solid var(--ring);outline-offset:3px; }

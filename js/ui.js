@@ -217,10 +217,10 @@
             </button>
             <div class="cw-time-panel" id="f-time-panel" role="group" aria-label="Choose a time" hidden>
               <div class="cw-time-entry">
-                <select id="f-time-hour" aria-label="Hour">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("")}</select>
+                <select id="f-time-hour" aria-label="Hour">${T.timeFormat() === "24" ? Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,"0")}">${String(i).padStart(2,"0")}</option>`).join("") : Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("")}</select>
                 <span class="cw-time-divider">:</span>
                 <select id="f-time-minute" aria-label="Minute">${Array.from({length:60},(_,i)=>`<option value="${String(i).padStart(2,"0")}">${String(i).padStart(2,"0")}</option>`).join("")}</select>
-                <select id="f-time-period" aria-label="AM or PM"><option value="AM">AM</option><option value="PM">PM</option></select>
+                ${T.timeFormat() === "24" ? "" : `<select id="f-time-period" aria-label="AM or PM"><option value="AM">AM</option><option value="PM">PM</option></select>`}
               </div>
               <div class="cw-time-footer"><button type="button" id="f-time-clear">Clear</button><button type="button" id="f-time-apply">Done</button></div>
             </div>
@@ -238,10 +238,11 @@
     const timeInput = q("f-time"), timeWrap = q("f-time-wrap"), timePanel = q("f-time-panel");
     const timeTrigger = q("f-time-trigger"), timeValue = q("f-time-value");
     const hourInput = q("f-time-hour"), minuteInput = q("f-time-minute"), periodInput = q("f-time-period");
+    const military = T.timeFormat() === "24"; // no AM/PM menu in 24-hour mode
     const fmtTime = value => {
       const m = /^(\d{2}):(\d{2})$/.exec(value || "");
       if (!m || +m[1] > 23 || +m[2] > 59) return "Set a time";
-      return `${+m[1] % 12 || 12}:${m[2]} ${+m[1] >= 12 ? "PM" : "AM"}`;
+      return T.fmtTime(value);
     };
     const syncTime = () => {
       timeValue.textContent = fmtTime(timeInput.value);
@@ -250,9 +251,9 @@
     const setFields = value => {
       const m = /^(\d{2}):(\d{2})$/.exec(value || "");
       const valid = m && +m[1] < 24 && +m[2] < 60;
-      hourInput.value = valid ? String(+m[1] % 12 || 12) : "9";
+      hourInput.value = military ? (valid ? m[1] : "09") : (valid ? String(+m[1] % 12 || 12) : "9");
       minuteInput.value = valid ? m[2] : "00";
-      periodInput.value = valid && +m[1] >= 12 ? "PM" : "AM";
+      if (periodInput) periodInput.value = valid && +m[1] >= 12 ? "PM" : "AM";
     };
     const closeTime = (restoreFocus = false) => {
       if (timePanel.hidden) return;
@@ -263,7 +264,7 @@
     };
     const applyTime = () => {
       const hour = Number(hourInput.value), minute = Number(minuteInput.value);
-      const h24 = (hour % 12) + (periodInput.value === "PM" ? 12 : 0);
+      const h24 = military ? hour : (hour % 12) + (periodInput.value === "PM" ? 12 : 0);
       timeInput.value = `${String(h24).padStart(2,"0")}:${String(minute).padStart(2,"0")}`;
       timeInput.dispatchEvent(new Event("change", { bubbles: true }));
       syncTime(); closeTime(true);
@@ -505,6 +506,7 @@
   async function page({ render }) {
     const main = document.getElementById('main');
     main.setAttribute("aria-busy", "true");
+    const photoReady = window.CoursewisePhotos?.loadMe(); // runs alongside the main load instead of after it
     try { await T.init(); }
     catch(error) {
       main.removeAttribute("aria-busy");
@@ -515,6 +517,7 @@
       main.classList.add('page-enter');
     }
     if (!T.state.signedIn) { location.replace("index.html"); return; }
+    await photoReady;
     main.removeAttribute("aria-busy");
     const key = document.body.dataset.page, u = T.state.user;
     document.body.insertAdjacentHTML("afterbegin", `<a class="sr-only" href="#main">Skip to content</a>
@@ -525,6 +528,7 @@
     document.body.insertAdjacentHTML("beforeend", `<footer class="site-footer"><div class="container footer-row">
       <span>Coursewise. Classes and life, on one short list.</span>
       <nav aria-label="Footer">${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</nav></footer>`);
+    window.CoursewisePhotos?.syncHeader();
     window.CoursewiseFriends?.mount();
     const rerender = () => render();
     document.addEventListener("click", e => {

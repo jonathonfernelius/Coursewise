@@ -92,16 +92,21 @@
         )%6
       ]
     })">
-      ${esc(
-        (p.name||p.handle||'?')
-          .split(' ')
-          .map(n=>n[0])
-          .slice(0,2)
-          .join('')
-          .toUpperCase()
-      )}
+      ${window.CoursewisePhotos.markup((p.name||p.handle||'?').split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase(), p.photoUrl || null)}
     </span>
   `;
+
+  // Friends' avatars are tappable and open their profile (Instagram-style).
+  const avatarLink = p => p.state==='friend'
+    ? `<button type="button" class="cw-f-avatar-btn" data-friend-detail="${esc(p.id)}" aria-label="View ${esc(p.name)}'s profile" tabindex="-1">${avatar(p)}</button>`
+    : avatar(p);
+
+  // Large profile photo: tap to enlarge within the panel. Falls back to a plain avatar when there is no photo.
+  const bigAvatar = p => p.photoUrl
+    ? `<button type="button" class="cw-f-avatar-btn cw-f-avatar-zoom${photoOpen?' is-open':''}" data-friend-photo="${esc(p.id)}" aria-expanded="${photoOpen}" aria-label="${photoOpen?'Shrink':'Enlarge'} ${esc(p.name)}'s photo">${avatar(p)}</button>`
+    : avatar(p);
+
+  let photoOpen=false;
 
   const cheer = p => `
     <button
@@ -126,8 +131,8 @@
         ${
           friends().length
             ? friends().slice(0,3).map(p=>`
-                <div class="cw-f-person">
-                  ${avatar(p)}
+                <div class="cw-f-person" data-friend-row="${esc(p.id)}">
+                  ${avatarLink(p)}
                   <div class="cw-f-person-copy">
                     <button type="button" class="cw-f-person-link" data-friend-detail="${esc(p.id)}">${esc(p.name)}</button>
                   </div>
@@ -215,8 +220,8 @@
 
   function personRow(p) {
     return `
-      <div class="cw-f-person">
-        ${avatar(p)}
+      <div class="cw-f-person"${p.state==='friend'?` data-friend-row="${esc(p.id)}"`:''}>
+        ${avatarLink(p)}
         <div class="cw-f-person-copy">
           <button type="button" class="cw-f-person-link" data-friend-detail="${esc(p.id)}">${esc(p.name)}</button>
           <span>@${esc(p.handle)}</span>
@@ -265,7 +270,7 @@
             <div class="cw-f-notification">
               <strong>${esc(n.sender)} cheered you on!</strong>
               <p>${esc(n.message)}</p>
-              <small>${new Date(n.created_at).toLocaleString()}</small>
+              <small>${new Date(n.created_at).toLocaleString(undefined, window.Tidy?.timeFormat?.() === '24' ? {hourCycle:'h23'} : undefined)}</small>
             </div>
           `).join('')
         : '<p class="cw-f-empty">No cheers yet. Your hype squad will show up here!</p>';
@@ -285,7 +290,7 @@
     const current = Math.max(0, Number(p.streak) || 0);
     const today = Math.max(0, Number(p.today) || 0);
     return `<button type="button" class="cw-f-back" data-friend-back>← Back to friends</button>
-      <div class="cw-f-detail-profile">${avatar(p)}<h3>${esc(p.name)}</h3><p>@${esc(p.handle)}</p></div>
+      <div class="cw-f-detail-profile">${bigAvatar(p)}<h3>${esc(p.name)}</h3><p>@${esc(p.handle)}</p></div>
       <div class="cw-f-detail-stats">
         <div class="cw-f-detail-stat"><span class="cw-f-detail-stat-icon" aria-hidden="true">🔥</span><strong>${current}</strong><span>Current streak</span></div>
         <div class="cw-f-detail-stat"><span class="cw-f-detail-stat-icon cw-f-detail-stat-check" aria-hidden="true">✓</span><strong>${today}</strong><span>Tasks done today</span></div>
@@ -297,6 +302,7 @@
     if(!dialog)return;
     const detail=detailId && friends().find(p=>String(p.id)===String(detailId));
     if(detailId && !detail) detailId=null;
+    if(!detail) photoOpen=false;
 
     dialog.innerHTML=`
       <div class="cw-f-panel-head">
@@ -384,6 +390,8 @@
       if(dbError)throw dbError;
       if(id!==searchSeq)return;
 
+      await window.CoursewisePhotos.enrichPeople(result.people || []);
+      if(id!==searchSeq)return;
       const fingerprint=JSON.stringify(result);
       const changed=fingerprint!==lastDataFingerprint;
 
@@ -447,6 +455,27 @@
     }
   }
 
+  // Slide the panel out (and fade the backdrop) before actually closing the dialog.
+  function closePanel() {
+    if(!dialog?.open||dialog.classList.contains('is-closing'))return;
+    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      dialog.close();
+      return;
+    }
+    let finished=false;
+    const finish=()=>{
+      if(finished)return;
+      finished=true;
+      dialog.classList.remove('is-closing');
+      if(dialog.open)dialog.close();
+    };
+    dialog.classList.add('is-closing');
+    dialog.addEventListener('animationend',e=>{
+      if(e.target===dialog&&e.animationName==='cw-f-exit')finish();
+    });
+    setTimeout(finish,400); // safety net if the animation event never fires
+  }
+
   function open(view,trigger) {
     detailId=null;
     active=view||'friends';
@@ -488,6 +517,11 @@
     dialog.setAttribute('aria-labelledby','cw-f-title');
     document.body.append(dialog);
 
+    dialog.addEventListener('cancel',e=>{
+      e.preventDefault();
+      closePanel();
+    });
+
     dialog.addEventListener('close',()=>{
       document.body.style.overflow=priorOverflow;
       opener?.focus();
@@ -502,7 +536,7 @@
           e.clientX>r.right ||
           e.clientY<r.top ||
           e.clientY>r.bottom
-        ) dialog.close();
+        ) closePanel();
       }
     });
 
@@ -552,12 +586,26 @@
         return;
       }
 
-      const detailButton=e.target.closest('[data-friend-detail]');
+      const photoButton=e.target.closest('[data-friend-photo]');
+      if(photoButton) {
+        // Toggle the class directly (no re-render) so the size change animates.
+        photoOpen=!photoOpen;
+        const person=friends().find(p=>String(p.id)===photoButton.dataset.friendPhoto);
+        photoButton.classList.toggle('is-open',photoOpen);
+        photoButton.setAttribute('aria-expanded',String(photoOpen));
+        photoButton.setAttribute('aria-label',`${photoOpen?'Shrink':'Enlarge'} ${person?.name||''}'s photo`);
+        return;
+      }
+
+      // Tapping a friend's row (outside its buttons) also opens their profile.
+      const rowTap=!e.target.closest('button,a,input,label')&&e.target.closest('[data-friend-row]');
+      const detailButton=e.target.closest('[data-friend-detail]')||(rowTap?{dataset:{friendDetail:rowTap.dataset.friendRow}}:null);
       if(detailButton) {
         detailId=detailButton.dataset.friendDetail;
+        photoOpen=false;
         active='friends';
         if(!dialog.open) {
-          opener=detailButton;
+          opener=e.target.closest('button')||rowTap||null;
           priorOverflow=document.body.style.overflow;
           document.body.style.overflow='hidden';
           dialog.showModal();
@@ -578,7 +626,7 @@
       }
 
       if(e.target.closest('[data-friends-close]')) {
-        dialog.close();
+        closePanel();
         return;
       }
 
