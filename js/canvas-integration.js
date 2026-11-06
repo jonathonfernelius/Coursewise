@@ -902,7 +902,7 @@
         </div>
 
         <p class="muted">
-          Preview and manage assignments from your BYU Canvas calendar.
+          Preview and manage assignments from your Canvas calendar.
         </p>
 
         <button
@@ -960,7 +960,7 @@
     } else {
       content.innerHTML = `
         <p class="muted">
-          Import your BYU Canvas assignments into CourseWise.
+          Import your Canvas assignments into CourseWise.
         </p>
         <form id="cw-canvas-form" class="form">
           <div class="field">
@@ -970,7 +970,7 @@
             <input
               type="url"
               id="cw-canvas-url"
-              placeholder="https://byu.instructure.com/feeds/calendars/..."
+              placeholder="https://your-school.instructure.com/feeds/calendars/..."
               required
               autocomplete="off"
               spellcheck="false"

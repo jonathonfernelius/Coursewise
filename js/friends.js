@@ -367,7 +367,7 @@
           ? `<div class="cw-f-note">
                Open a friend to see their current streak and how many tasks they've finished today.
                Individual task details stay private. Streaks count days with at least one finished task.
-               Cheers and days reset at midnight Utah time.
+               Cheers and days reset at midnight Mountain Time.
              </div>`
           : ''
       }

@@ -212,7 +212,7 @@
 
   const db = window.tidyClient;
   const tones = ["sky", "grape", "sun", "mint", "rose", "slate", "teal", "coral", "indigo", "lime"];
-  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], canvasConnected: false, streak: null });
+  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], canvasConnected: false, completedToday: 0, streak: null });
   let state = empty(), authUser, owner;
   const requireDb = () => { if (!db) throw new Error('Could not load Supabase. Check your connection and reload.'); };
   async function result(query) { const {data, error} = await query; if (error) throw new Error(error.message); return data; }
@@ -294,6 +294,7 @@
         .map(taskFromRow)
         .sort((a,b) => a.sortOrder-b.sortOrder || a.id.localeCompare(b.id)),
       canvasConnected: false,
+      completedToday: Number(streak?.completed_today) || 0,
       streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null };
     if (window.CoursewiseTheme) window.CoursewiseTheme.apply(state.prefs.theme);
     else document.documentElement.dataset.theme = state.prefs.theme;

@@ -96,7 +96,7 @@
           <h2>${open.length ? `${open.length} ${open.length === 1 ? "thing" : "things"} left today.` : dueToday.length ? "Today is done." : "Your day is clear."}</h2>
           <p>${T.esc(snapshotMessage(open.length, today))}</p>
           ${streakHTML()}
-          <div class="hero-stat"><strong>${open.length}</strong><span>open today</span></div></section>
+          <div class="hero-stat"><strong>${T.state.completedToday ?? 0}</strong><span>completed today</span></div></section>
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
           <div class="task-list${overdue.length ? " has-tasks" : ""}">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
         <section class="card week-card" aria-labelledby="week-heading"><div class="section-head"><h2 id="week-heading">This week</h2><span class="count" aria-label="${week.length} tasks due in the next seven days">${week.length}</span></div>
