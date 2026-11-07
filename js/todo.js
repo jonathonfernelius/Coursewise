@@ -2,7 +2,63 @@
 (() => {
   const T = Tidy, U = T.ui, root = document.getElementById("main");
   const collapsed = new Set(); let orderSaving = false, taskOrderSaving = false;
+  const sortSettings = new Map();
+  let sortSettingsOwner = null;
   const selected = new Set(); let selecting = false, deletingSelection = false, completingSelection = false;
+
+  const sortModes = [
+    ["manual", "Manual"],
+    ["title", "Alphabetically"],
+    ["due", "Due date"],
+    ["created", "Recently added"],
+    ["category", "Category"]
+  ];
+  function ensureSortSettings() {
+    const owner = T.state.user.email || T.state.user.username || "default";
+    if (owner === sortSettingsOwner) return;
+    sortSettingsOwner = owner;
+    sortSettings.clear();
+    try {
+      const saved = JSON.parse(localStorage.getItem(`cw-todo-sort-v1:${owner}`) || "{}");
+      for (const [id, value] of Object.entries(saved)) {
+        if (sortModes.some(([mode]) => mode === value?.mode)) {
+          sortSettings.set(id, { mode: value.mode, direction: value.direction === "desc" ? "desc" : "asc" });
+        }
+      }
+    } catch {}
+  }
+  function sortFor(listId) { return sortSettings.get(listId) || { mode: "manual", direction: "asc" }; }
+  function saveSortSettings() {
+    try {
+      localStorage.setItem(`cw-todo-sort-v1:${sortSettingsOwner || "default"}`, JSON.stringify(Object.fromEntries(sortSettings)));
+    } catch {}
+  }
+  function setSort(listId, value) {
+    sortSettings.set(listId, value);
+    saveSortSettings();
+  }
+  function sortedTasks(tasks, listId) {
+    const { mode, direction } = sortFor(listId);
+    if (mode === "manual") return tasks;
+    const sign = direction === "desc" ? -1 : 1;
+    const compareText = (a, b) => String(a || "").localeCompare(String(b || ""), undefined, { numeric: true, sensitivity: "base" });
+    return [...tasks].sort((a, b) => {
+      let left, right;
+      if (mode === "title") { left = a.title; right = b.title; }
+      else if (mode === "due") { left = a.due; right = b.due; }
+      else if (mode === "created") { left = a.createdAt; right = b.createdAt; }
+      else {
+        left = T.cat(a.categoryId)?.name;
+        right = T.cat(b.categoryId)?.name;
+      }
+      const leftMissing = left == null || left === "", rightMissing = right == null || right === "";
+      if (leftMissing !== rightMissing) return leftMissing ? (direction === "asc" ? 1 : -1) : (direction === "asc" ? -1 : 1);
+      if (leftMissing) return (a.sortOrder - b.sortOrder) || a.id.localeCompare(b.id);
+      return sign * (mode === "due" || mode === "created"
+        ? String(left).localeCompare(String(right))
+        : compareText(left, right)) || (a.sortOrder - b.sortOrder) || a.id.localeCompare(b.id);
+    });
+  }
 
   function exitSelection() { selecting = false; selected.clear(); render(); }
   function toggleSelected(id) {
@@ -106,6 +162,7 @@
 
   function render() {
     const S = T.state;
+    ensureSortSettings();
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>To-do</h1><p>Drag the grips to reorder lists and tasks or move tasks between lists.</p></div>
         <div class="head-actions"><button class="btn btn-outline" id="new-list">${U.icons.plus} New list</button>
@@ -119,10 +176,15 @@
         <button type="button" class="btn btn-outline" id="bulk-cancel">Cancel</button></div>
       </div>
       <div class="lists">${S.lists.map(l => {
-        const items = S.tasks.filter(t => t.listId === l.id && (S.prefs.showDone || !t.done)), open = !collapsed.has(l.id);
+        const items = sortedTasks(S.tasks.filter(t => t.listId === l.id && (S.prefs.showDone || !t.done)), l.id), open = !collapsed.has(l.id);
+        const sort = sortFor(l.id), directionLabel = sort.direction === "asc" ? "ascending" : "descending";
         return `<section class="card list-card" data-list-id="${T.esc(l.id)}"><div class="list-head">
           <button class="list-drag" draggable="true" data-drag-list="${T.esc(l.id)}" aria-label="Reorder ${T.esc(l.title)}" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag to reorder; use arrow keys to move">${U.icons.grip}</button>
           <button class="list-toggle" data-collapse="${l.id}" aria-expanded="${open}">${U.icons.down}<h2>${T.esc(l.title)}</h2><span class="count">${items.length}</span></button>
+          <div class="list-sort"><label class="sr-only" for="sort-${T.esc(l.id)}">Sort ${T.esc(l.title)} tasks</label>
+            <select id="sort-${T.esc(l.id)}" data-sort-list="${T.esc(l.id)}" aria-label="Sort ${T.esc(l.title)} tasks">${sortModes.map(([value,label]) => `<option value="${value}"${sort.mode === value ? " selected" : ""}>${label}</option>`).join("")}</select>
+            <button type="button" class="sort-direction" data-sort-direction="${T.esc(l.id)}" aria-label="Sort ${T.esc(l.title)} ${directionLabel}; switch to ${sort.direction === "asc" ? "descending" : "ascending"}" title="Switch to ${sort.direction === "asc" ? "descending" : "ascending"}"${sort.mode === "manual" ? " hidden" : ""}>${sort.direction === "asc" ? "↑" : "↓"}</button>
+          </div>
           <button class="icon-btn" data-rename="${l.id}" aria-label="Rename ${T.esc(l.title)}">${U.icons.pencil}</button>
           <button class="icon-btn danger" data-delete="${l.id}" aria-label="Delete ${T.esc(l.title)}">${U.icons.trash}</button></div>
           ${open ? `<div class="task-list" data-task-list="${T.esc(l.id)}">${items.length ? items.map(t => U.taskRow(t, { draggable: true })).join("") : '<p class="empty">No tasks in this list.</p>'}</div>` : ""}</section>`;
@@ -140,6 +202,17 @@
     updateSelectionUI();
     document.getElementById("new-list").onclick = () => nameDialog("New list", "", async v => { await T.addList(v); U.toast("List added"); render(); });
     root.querySelectorAll("[data-collapse]").forEach(b => b.onclick = () => { const id = b.dataset.collapse; collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); render(); });
+    root.querySelectorAll("[data-sort-list]").forEach(select => select.onchange = () => {
+      const current = sortFor(select.dataset.sortList);
+      setSort(select.dataset.sortList, { mode: select.value, direction: select.value === current.mode ? current.direction : "asc" });
+      render();
+    });
+    root.querySelectorAll("[data-sort-direction]").forEach(button => button.onclick = () => {
+      const listId = button.dataset.sortDirection, current = sortFor(listId);
+      if (current.mode === "manual") return;
+      setSort(listId, { ...current, direction: current.direction === "asc" ? "desc" : "asc" });
+      render();
+    });
     root.querySelectorAll("[data-rename]").forEach(b => b.onclick = () => { const l = S.lists.find(x => x.id === b.dataset.rename); nameDialog("Rename list", l.title, async v => { await T.renameList(l.id, v); render(); }); });
     root.querySelectorAll("[data-delete]").forEach(b => b.onclick = () => {
       const l = S.lists.find(x => x.id === b.dataset.delete);
@@ -286,6 +359,8 @@
       );
       const oldTargetIds = T.state.tasks.filter(task => task.listId === targetListId).map(task => task.id);
       if (targetListId !== draggedTaskSourceId || targetIds.some((id, index) => id !== oldTargetIds[index])) {
+        setSort(targetListId, { mode: "manual", direction: "asc" });
+        if (targetListId !== draggedTaskSourceId) setSort(draggedTaskSourceId, { mode: "manual", direction: "asc" });
         persistTaskOrder(draggedTaskId, targetListId, targetIds, sourceIds);
       }
     });
@@ -320,23 +395,32 @@
     if (key === "ArrowLeft" || key === "ArrowRight") {
       const nextListId = listIds[listIndex + (key === "ArrowLeft" ? -1 : 1)];
       if (!nextListId) return;
+      const nextVisible = visibleIdsForList(nextListId);
       const targetIds = withHiddenTasks(nextListId, [
-        ...T.state.tasks.filter(item => item.listId === nextListId && (T.state.prefs.showDone || !item.done)).map(item => item.id),
+        ...nextVisible,
         taskId
       ], taskId);
       const sourceIds = withHiddenTasks(task.listId,
-        T.state.tasks.filter(item => item.listId === task.listId && (T.state.prefs.showDone || !item.done) && item.id !== taskId).map(item => item.id),
+        visibleIdsForList(task.listId).filter(id => id !== taskId),
         taskId);
+      setSort(task.listId, { mode: "manual", direction: "asc" });
+      setSort(nextListId, { mode: "manual", direction: "asc" });
       persistTaskOrder(taskId, nextListId, targetIds, sourceIds, true);
       return;
     }
-    const visibleIds = T.state.tasks
-      .filter(item => item.listId === task.listId && (T.state.prefs.showDone || !item.done))
-      .map(item => item.id);
+    const visibleIds = visibleIdsForList(task.listId);
     const index = visibleIds.indexOf(taskId), next = index + (key === "ArrowUp" ? -1 : 1);
     if (next < 0 || next >= visibleIds.length) return;
     [visibleIds[index], visibleIds[next]] = [visibleIds[next], visibleIds[index]];
+    setSort(task.listId, { mode: "manual", direction: "asc" });
     persistTaskOrder(taskId, task.listId, withHiddenTasks(task.listId, visibleIds, null), [], true);
+  }
+
+  function visibleIdsForList(listId) {
+    const card = [...root.querySelectorAll(".list-card")].find(item => item.dataset.listId === listId);
+    const rows = card?.querySelectorAll(".task-list .task[data-task-id]");
+    if (rows) return [...rows].map(row => row.dataset.taskId);
+    return sortedTasks(T.state.tasks.filter(item => item.listId === listId && (T.state.prefs.showDone || !item.done)), listId).map(item => item.id);
   }
 
   function persistTaskOrder(taskId, targetListId, targetIds, sourceIds, restoreFocus = false) {

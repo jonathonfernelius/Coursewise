@@ -210,7 +210,19 @@ main{flex:1;min-width:0;padding:2.5rem 0 4rem}
 .list-toggle h2{font-size:1.1rem;font-weight:400}
 .list-toggle svg{width:1rem;height:1rem;color:var(--muted-fg);transition:transform .2s}
 .list-toggle[aria-expanded=false] svg{transform:rotate(-90deg)}
+.list-sort{display:flex;flex:none;align-items:center;gap:.2rem}
+.list-sort select{max-width:10.5rem;height:2.2rem;padding:.25rem 1.7rem .25rem .55rem;border:1px solid var(--border);border-radius:.6rem;background:var(--card);font-size:.8rem}
+.sort-direction{display:grid;place-items:center;width:2.2rem;height:2.2rem;padding:0;border:1px solid var(--border);border-radius:.6rem;background:var(--card);font-size:1.1rem;line-height:1}
+.sort-direction[hidden]{display:none}
+.sort-direction:hover{background:var(--muted)}
 .list-card .task-list{margin-top:.8rem}
+@media(max-width:560px){
+  .list-head{flex-wrap:wrap}
+  .list-toggle{flex:1 1 calc(100% - 8rem)}
+  .list-sort{order:2;margin-left:2.4rem;flex:1 1 auto}
+  .list-sort select{max-width:none;min-width:0;flex:1}
+  .list-head>[data-rename],.list-head>[data-delete]{order:1}
+}
 
 /* Calendar */
 .cal{padding:1.25rem}

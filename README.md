@@ -47,6 +47,18 @@ tasks to be added at the bottom. Users can drag lists and tasks into a saved
 order, and move tasks between lists. Run both migrations to enable both
 features; the task-order migration can also be run independently.
 
+## Enabling recently-added task sorting
+Run `supabase/migrations/20261107000000_task_created_at.sql` once in the
+project's Supabase SQL Editor. This adds the creation timestamp used by the
+To-do page's "Recently added" sort. Tasks that existed before the migration
+receive the migration time because their original creation time was not stored;
+new tasks are timestamped automatically.
+
+Canvas imports can use an existing category with the same name as the course.
+If there is no match, the import preview offers to create that category when
+the student confirms the import. The To-do page's "Course / class" sort then
+sorts by category name.
+
 ## Applying the streaks migration
 1. Open the project's Supabase SQL Editor.
 2. Run `supabase/migrations/20261104000000_streaks.sql` once.

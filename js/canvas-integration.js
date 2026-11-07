@@ -15,6 +15,7 @@
   // Choices remain available while this page is open.
   const choices = new Map();
   const coursePreferences = new Map();
+  const CREATE_COURSE_CATEGORY = "__create_course_category__";
 
   const style = document.createElement("style");
   style.textContent = `
@@ -320,6 +321,64 @@
     return choices.get(event.uid);
   }
 
+  function matchingCourseCategory(course) {
+    const name = String(course || "").trim();
+    if (!name || name.toLowerCase() === "unsorted") return null;
+    return (window.Tidy?.categories || []).find(category =>
+      category.name.trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+    ) || null;
+  }
+
+  function suggestedCourseCategory(course) {
+    return matchingCourseCategory(course)?.id ||
+      (course && String(course).trim().toLowerCase() !== "unsorted" ? CREATE_COURSE_CATEGORY : "");
+  }
+
+  function categoryOptionsForCourse(course, action = "importing") {
+    const options = [
+      { value: "", label: "No category" },
+      ...(window.Tidy?.categories || []).map(category => ({
+        value: String(category.id), label: category.name
+      }))
+    ];
+    if (!matchingCourseCategory(course) && course && String(course).trim().toLowerCase() !== "unsorted") {
+      options.push({ value: CREATE_COURSE_CATEGORY, label: `Create category “${course}” when ${action}` });
+    }
+    return options;
+  }
+
+  async function resolveCourseCategorySuggestions(items, events) {
+    const courses = new Set();
+    for (const item of items) {
+      if (!item.suggestCourseCategory) continue;
+      const event = events.find(candidate => candidate.uid === item.uid);
+      const course = event?.course || "Unsorted";
+      if (String(course).trim().toLowerCase() !== "unsorted") courses.add(course);
+    }
+    for (const course of courses) {
+      let category = matchingCourseCategory(course);
+      if (!category) {
+        const tones = window.Tidy?.tones || ["sky"];
+        category = await window.Tidy.addCategory(course, tones[window.Tidy.categories.length % tones.length]);
+      }
+      const preference = coursePreferences.get(course) || {};
+      if (preference.categoryId === CREATE_COURSE_CATEGORY) {
+        preference.categoryId = String(category.id);
+        coursePreferences.set(course, preference);
+      }
+      for (const item of items) {
+        const event = events.find(candidate => candidate.uid === item.uid);
+        if (item.suggestCourseCategory && event?.course === course) {
+          item.categoryId = String(category.id);
+          getChoice(event).categoryId = String(category.id);
+          delete item.suggestCourseCategory;
+        }
+      }
+    }
+    for (const item of items) delete item.suggestCourseCategory;
+    return items;
+  }
+
   // Read stored choices and imported task IDs.
   async function loadSelections(events, savedResult = null) {
     const result = savedResult ?? await callFunction(
@@ -364,8 +423,9 @@
             ? existingTask.listId
             : stored?.ListID == null ? null : String(stored.ListID),
           categoryId: existingTask
-            ? existingTask.categoryId
-            : stored?.CategoryID == null ? null : String(stored.CategoryID)
+            ? (existingTask.categoryId || suggestedCourseCategory(event.course) || null)
+            : stored?.CategoryID != null ? String(stored.CategoryID)
+              : suggestedCourseCategory(event.course) || null
         });
       }
     }
@@ -528,14 +588,6 @@
       }))
     ];
 
-    const categoryOptions = [
-      { value: "", label: "No category" },
-      ...(state?.categories || []).map(item => ({
-        value: String(item.id),
-        label: item.name
-      }))
-    ];
-
     for (const [course, courseEvents] of groups) {
       const details = document.createElement("details");
       details.className = "cw-course";
@@ -564,8 +616,8 @@
 
       settings.appendChild(dropdown(
         "Category for this course",
-        categoryOptions,
-        pref.categoryId ?? first.categoryId,
+        categoryOptionsForCourse(course, courseEvents.every(event => imported.has(event.uid)) ? "updating" : "confirmed"),
+        pref.categoryId !== undefined ? pref.categoryId : first.categoryId ?? suggestedCourseCategory(course),
         value => applyCoursePreference(
           course, "categoryId", value, events
         )
@@ -691,7 +743,8 @@
           uid: event.uid,
           selected: choice.selected,
           listId: choice.listId,
-          categoryId: choice.categoryId
+          categoryId: choice.categoryId === CREATE_COURSE_CATEGORY ? null : choice.categoryId,
+          suggestCourseCategory: choice.categoryId === CREATE_COURSE_CATEGORY
         };
       });
     }
@@ -793,7 +846,7 @@
 
     // Save checked/unchecked status, lists, and categories.
     async function saveSelections() {
-        const items = selectedItems();
+        const items = selectedItems().map(({ suggestCourseCategory, ...item }) => item);
 
         const ids = items.map(item => item.uid);
 
@@ -862,10 +915,39 @@
       try {
         const result = await saveSelections();
 
+        let categoryNotice = "";
+        const categorySuggestions = selectedItems().filter(item => {
+          const event = events.find(candidate => candidate.uid === item.uid);
+          const coursePreference = coursePreferences.get(event?.course || "Unsorted");
+          return item.selected && imported.has(item.uid) &&
+            (item.suggestCourseCategory || coursePreference?.categoryId === CREATE_COURSE_CATEGORY);
+        }).map(item => ({ ...item, suggestCourseCategory: true }));
+        let categorizedCount = 0;
+        if (categorySuggestions.length) {
+          try {
+            await resolveCourseCategorySuggestions(categorySuggestions, events);
+            const byCategory = new Map();
+            for (const item of categorySuggestions) {
+              const taskId = imported.get(item.uid);
+              if (!taskId || !item.categoryId) continue;
+              if (!byCategory.has(item.categoryId)) byCategory.set(item.categoryId, []);
+              byCategory.get(item.categoryId).push(taskId);
+            }
+            categorizedCount = await window.Tidy.updateTaskCategories(
+              [...byCategory].map(([categoryId, taskIds]) => ({ categoryId, taskIds }))
+            );
+            await saveSelections();
+          } catch {
+            categoryNotice = " Course categories could not be created; check the category setup and try again.";
+          }
+        }
+
         await window.Tidy.reload();
 
         feedback.textContent =
-          `Saved! ${result.updated} imported tasks updated.`;
+          (categorizedCount
+            ? `Saved! Assigned course categories to ${categorizedCount} imported task${categorizedCount === 1 ? "" : "s"}.`
+            : `Saved! ${result.updated} imported tasks updated.`) + categoryNotice;
 
         message(
           section,
@@ -885,8 +967,9 @@
     // both use the same database functions and save the selected categories.
     async function importNewItems(newItems, feedbackTarget) {
       busy(true);
-      feedbackTarget.textContent = "Importing...";
+      feedbackTarget.textContent = "Preparing course categories and importing...";
       try {
+        await resolveCourseCategorySuggestions(newItems, events);
         const result = await callFunction("canvas-import", {
           items: newItems.map(item => ({
             uid: item.uid,
@@ -978,7 +1061,7 @@
           const settings = element("div", "", "cw-course-settings");
           settings.appendChild(dropdown("List", listOptions,
             choice.listId, value => { choice.listId = value || null; }));
-          settings.appendChild(dropdown("Category", categoryOptions,
+          settings.appendChild(dropdown("Category", categoryOptionsForCourse(event.course),
             choice.categoryId, value => { choice.categoryId = value || null; }));
           item.appendChild(settings);
           modal.appendChild(item);
@@ -1005,7 +1088,8 @@
             uid: event.uid,
             selected: true,
             listId: getChoice(event).listId,
-            categoryId: getChoice(event).categoryId
+            categoryId: getChoice(event).categoryId === CREATE_COURSE_CATEGORY ? null : getChoice(event).categoryId,
+            suggestCourseCategory: getChoice(event).categoryId === CREATE_COURSE_CATEGORY
           }));
           const success = await importNewItems(items, popupFeedback);
           if (success) {
