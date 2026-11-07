@@ -64,3 +64,31 @@ To verify that the account creation vertical slice is working:
 6. Check Supabase to confirm that the new account information was saved to the database.
 
 If the account remains accessible after refreshing, this demonstrates that the frontend successfully communicates with Supabase and that user account information persists.
+
+## Setting up Canvas AI suggestions
+The Canvas preview can request optional suggestions from the `canvas-ai-suggestions`
+Supabase Edge Function. The function sends only the event title, event type, and
+due date to Gemini. Past-due items are also flagged using their due date. Suggestions
+never change selections automatically; students must review them and confirm before
+importing. The preview reports when an AI review completes, including when it returns
+no suggestions, and explains when setup or a usage limit prevents a review.
+
+To configure the function:
+1. Create a Gemini API key in Google AI Studio using a project that remains on the Free Tier. Do not link a billing account if Gemini API charges must remain disabled.
+2. From the repository connected to the Coursewise Supabase project, store the key as a server-side secret and deploy the function:
+
+   ```sh
+   supabase secrets set GEMINI_API_KEY=your-key GEMINI_MODEL=gemini-3.5-flash-lite
+   supabase functions deploy canvas-ai-suggestions
+   ```
+
+3. Deploy the updated website.
+
+The API key must stay in Supabase Function secrets; never put it in frontend
+JavaScript or commit it to the repository. Gemini free-tier limits can temporarily
+prevent requests, in which case the preview shows a limit message and manual
+Canvas review and import remain available. Google documents that free-tier
+requests have limited quotas and that submitted content may be used to improve
+Google products. See the [Gemini API billing](https://ai.google.dev/gemini-api/docs/billing)
+and [pricing](https://ai.google.dev/gemini-api/docs/pricing) pages before enabling
+the feature.

@@ -78,9 +78,70 @@
       padding: 10px 6px;
       cursor: pointer;
     }
+    .cw-event-entry { border-radius: 10px; }
     .cw-event-row:hover {
       background: rgba(163, 91, 121, 0.05);
       border-radius: 8px;
+    }
+    .cw-ai-note {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 6px 8px 37px;
+      padding: 10px 12px;
+      border: 1px solid var(--warning);
+      border-radius: 10px;
+      background: var(--secondary);
+      color: var(--fg);
+      font-size: 13px;
+    }
+    .cw-ai-note[hidden] { display: none; }
+    .cw-ai-note p { margin: 0; }
+    .cw-ai-note .btn { flex-shrink: 0; }
+    .cw-ai-controls { margin: 14px 0 8px; }
+    .cw-ai-disclosure { margin: 6px 0 0; font-size: 12px; }
+    .cw-ai-status {
+      margin: 8px 0 14px;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--muted);
+      color: var(--fg);
+      font-size: 13px;
+    }
+    .cw-ai-status:empty { display: none; }
+    .cw-ai-status[data-state="complete"] { border-color: var(--primary); }
+    .cw-ai-status[data-state="error"] { border-color: var(--danger); }
+    .cw-ai-summary {
+      margin: 0 0 16px;
+      padding: 14px;
+      border: 1px solid var(--primary);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--fg);
+    }
+    .cw-ai-summary[hidden] { display: none; }
+    .cw-ai-summary h3 { margin: 0 0 5px; font-size: 16px; font-weight: 400; }
+    .cw-ai-summary-intro { margin: 0 0 12px; color: var(--muted-fg); font-size: 13px; }
+    .cw-ai-reason-groups { display: grid; gap: 8px; }
+    .cw-ai-reason-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+    }
+    .cw-ai-reason-copy { min-width: 0; }
+    .cw-ai-reason-label { display: block; color: var(--primary-dark); font-size: 11px; font-weight: 400; }
+    .cw-ai-reason-text { display: block; font-size: 13px; }
+    .cw-ai-mass-status { margin: 10px 0 0; color: var(--primary-dark); font-size: 13px; }
+    @media (max-width: 520px) {
+      .cw-ai-note { align-items: flex-start; flex-direction: column; margin-left: 12px; }
+      .cw-ai-reason-group { align-items: stretch; flex-direction: column; }
     }
     .cw-course {
       padding: 12px;
@@ -110,8 +171,8 @@
       padding: 9px;
       border: 1px solid var(--border, #ddd);
       border-radius: 8px;
-      background: var(--surface, white);
-      color: inherit;
+      background: var(--card);
+      color: var(--fg);
     }
     .cw-status {
       font-size: 12px;
@@ -129,14 +190,15 @@
       padding: 20px;
     }
     .cw-new-modal {
-      background: var(--surface, #fff);
-      color: inherit;
+      background: var(--card);
+      color: var(--fg);
       width: min(570px, 100%);
       max-height: min(85vh, 780px);
       overflow: auto;
       border-radius: 20px;
       padding: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.22);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-float);
     }
     .cw-new-modal h3 { margin: 0 0 8px; }
     .cw-new-item {
@@ -144,6 +206,8 @@
       border: 1px solid var(--border, #e5e5e5);
       border-radius: 12px;
       margin: 12px 0;
+      background: var(--bg);
+      color: var(--fg);
     }
     .cw-new-item strong { display: block; }
     .cw-new-item .cw-course-settings { margin: 10px 0 0; }
@@ -361,6 +425,7 @@
     }
 
     const rows = new Map();
+    const aiSuggestionGroups = [];
     const counter = element("p", "");
     container.appendChild(counter);
 
@@ -372,8 +437,23 @@
 
         if (checked) selected++;
 
-        const checkbox = rows.get(event.uid);
-        if (checkbox) checkbox.checked = checked;
+        const row = rows.get(event.uid);
+        if (row?.checkbox) row.checkbox.checked = checked;
+        if (row?.action) row.action.textContent = checked ? "Deselect" : "Keep selected";
+      }
+
+      for (const group of aiSuggestionGroups) {
+        const remaining = group.events.filter(event => getChoice(event).selected).length;
+        group.button.disabled = remaining === 0;
+        group.button.textContent = remaining
+          ? `Deselect ${remaining} item${remaining === 1 ? "" : "s"}`
+          : "All deselected";
+        group.button.setAttribute(
+          "aria-label",
+          remaining
+            ? `Deselect ${remaining} selected ${remaining === 1 ? "item" : "items"}. Reason: ${group.reason}`
+            : `All items deselected. Reason: ${group.reason}`
+        );
       }
 
       counter.textContent =
@@ -400,6 +480,43 @@
     });
 
     container.appendChild(allButton);
+
+    const newEvents = events.filter(event => !imported.has(event.uid));
+    const aiControls = element("div", "", "cw-ai-controls");
+    const aiButton = element("button", "Get AI suggestions", "btn btn-outline");
+    aiButton.type = "button";
+    aiButton.disabled = !newEvents.length;
+    const aiDisclosure = element(
+      "p",
+      "Gemini reviews item titles, event types, and due dates only. It will not change selections or import items.",
+      "muted cw-ai-disclosure"
+    );
+    if (newEvents.length > 80) {
+      aiButton.disabled = true;
+      aiDisclosure.textContent = "AI can review up to 80 new Canvas items at a time. You can still review and import them manually.";
+    }
+    aiControls.append(aiButton, aiDisclosure);
+    container.appendChild(aiControls);
+    const aiStatus = element("p", "", "cw-ai-status");
+    aiStatus.setAttribute("role", "status");
+    aiStatus.setAttribute("aria-live", "polite");
+    container.appendChild(aiStatus);
+    const aiSummary = element("section", "", "cw-ai-summary");
+    aiSummary.hidden = true;
+    aiSummary.setAttribute("aria-labelledby", "cw-ai-summary-title");
+    const aiSummaryTitle = element("h3", "Suggestions to skip by reason");
+    aiSummaryTitle.id = "cw-ai-summary-title";
+    const aiSummaryIntro = element(
+      "p",
+      "Deselect a whole group by reason, or adjust items one at a time below. Nothing is imported until you confirm.",
+      "cw-ai-summary-intro"
+    );
+    const aiReasonGroups = element("div", "", "cw-ai-reason-groups");
+    const aiMassStatus = element("p", "", "cw-ai-mass-status");
+    aiMassStatus.setAttribute("role", "status");
+    aiMassStatus.setAttribute("aria-live", "polite");
+    aiSummary.append(aiSummaryTitle, aiSummaryIntro, aiReasonGroups, aiMassStatus);
+    container.appendChild(aiSummary);
 
     const state = window.Tidy?.state;
 
@@ -478,6 +595,7 @@
       details.appendChild(groupButton);
 
       for (const event of courseEvents) {
+        const entry = element("div", "", "cw-event-entry");
         const row = document.createElement("label");
         row.className = "cw-event-row";
 
@@ -489,8 +607,6 @@
           getChoice(event).selected = checkbox.checked;
           refreshCheckboxes();
         });
-
-        rows.set(event.uid, checkbox);
 
         const info = document.createElement("div");
         info.appendChild(element(
@@ -521,7 +637,21 @@
         ));
 
         row.append(checkbox, info);
-        details.appendChild(row);
+
+        const aiNote = element("div", "", "cw-ai-note");
+        aiNote.hidden = true;
+        const aiReason = element("p", "");
+        const aiAction = element("button", "Deselect", "btn btn-outline");
+        aiAction.type = "button";
+        aiAction.addEventListener("click", () => {
+          const choice = getChoice(event);
+          choice.selected = !choice.selected;
+          refreshCheckboxes();
+        });
+        aiNote.append(aiReason, aiAction);
+        rows.set(event.uid, { checkbox, note: aiNote, reason: aiReason, action: aiAction });
+        entry.append(row, aiNote);
+        details.appendChild(entry);
       }
 
       container.appendChild(details);
@@ -570,6 +700,96 @@
       importButton.disabled = value;
       updateButton.disabled = value;
     }
+
+    let aiSuggestionsLoaded = false;
+    aiButton.addEventListener("click", async () => {
+      if (!newEvents.length || aiSuggestionsLoaded) return;
+      aiButton.disabled = true;
+      aiButton.textContent = "Checking items...";
+      busy(true);
+      aiStatus.dataset.state = "loading";
+      aiStatus.textContent = `AI is reviewing ${newEvents.length} new item${newEvents.length === 1 ? "" : "s"}...`;
+      aiSummary.hidden = true;
+      aiReasonGroups.replaceChildren();
+      aiMassStatus.textContent = "";
+      aiSuggestionGroups.length = 0;
+      try {
+        const result = await callFunction("canvas-ai-suggestions", {
+          items: newEvents.map(event => ({
+            index: events.indexOf(event),
+            title: event.title || "",
+            eventType: event.type || event.eventType || event.kind || "",
+            due: event.due || ""
+          }))
+        });
+        const suggestions = Array.isArray(result.suggestions)
+          ? result.suggestions : [];
+        let shown = 0;
+        const groupedSuggestions = new Map();
+        for (const suggestion of suggestions) {
+          const event = events[suggestion.index];
+          if (!event || imported.has(event.uid) || suggestion.recommendSkip !== true) continue;
+          const reason = String(suggestion.reason || "").trim();
+          if (!reason) continue;
+          const row = rows.get(event.uid);
+          if (!row) continue;
+          row.reason.textContent = suggestion.kind === "past_due"
+            ? `Past due: ${reason}`
+            : `AI suggests skipping: ${reason}`;
+          row.note.hidden = false;
+          const kind = suggestion.kind === "past_due" ? "past_due" : "ai";
+          const key = `${kind}:${reason.toLocaleLowerCase()}`;
+          if (!groupedSuggestions.has(key)) {
+            groupedSuggestions.set(key, { kind, reason, events: [] });
+          }
+          groupedSuggestions.get(key).events.push(event);
+          shown++;
+        }
+
+        for (const group of groupedSuggestions.values()) {
+          const row = element("div", "", "cw-ai-reason-group");
+          const copy = element("div", "", "cw-ai-reason-copy");
+          copy.append(
+            element("span", group.kind === "past_due" ? "Past due" : "AI suggestion", "cw-ai-reason-label"),
+            element("span", group.reason, "cw-ai-reason-text")
+          );
+          const action = element("button", "", "btn btn-outline");
+          action.type = "button";
+          const trackedGroup = { ...group, button: action };
+          action.addEventListener("click", () => {
+            const selectedEvents = trackedGroup.events.filter(event => getChoice(event).selected);
+            if (!selectedEvents.length) return;
+            for (const event of selectedEvents) getChoice(event).selected = false;
+            refreshCheckboxes();
+            aiMassStatus.textContent = `Deselected ${selectedEvents.length} item${selectedEvents.length === 1 ? "" : "s"}. You can change individual selections below before importing.`;
+          });
+          aiSuggestionGroups.push(trackedGroup);
+          row.append(copy, action);
+          aiReasonGroups.appendChild(row);
+        }
+        aiSummary.hidden = aiSuggestionGroups.length === 0;
+        refreshCheckboxes();
+
+        aiSuggestionsLoaded = true;
+        aiButton.textContent = "AI suggestions ready";
+        aiButton.disabled = true;
+        aiStatus.dataset.state = "complete";
+        aiStatus.textContent = shown
+          ? `AI review complete — ${shown} suggestion${shown === 1 ? "" : "s"}. Review them below; no items have been deselected or imported.`
+          : "AI review complete — no items were flagged. This means none clearly matched the skip criteria; the AI check did run. You can still review every item yourself.";
+      } catch (error) {
+        aiStatus.dataset.state = "error";
+        aiStatus.textContent = error.message === "AI_SUGGESTION_LIMIT"
+          ? "Sorry, AI suggestions have reached their limit for this period. Please try again later."
+          : error.message === "AI suggestions are not configured yet."
+            ? "AI suggestions are not set up yet. Check the GEMINI_API_KEY secret and deploy the canvas-ai-suggestions function."
+            : "AI review could not finish. You can still review and import Canvas items; check the Supabase function logs for details.";
+        aiButton.textContent = "Try AI suggestions again";
+        aiButton.disabled = false;
+      } finally {
+        busy(false);
+      }
+    });
 
     // Save checked/unchecked status, lists, and categories.
     async function saveSelections() {
