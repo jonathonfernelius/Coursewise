@@ -456,9 +456,12 @@
 
       if (!history) return;
 
-      const known = new Set(
-        imported.map(row => row.CanvasUID)
-      );
+      // A saved decision (including "skip") is not a new Canvas item.
+      const known = new Set([
+        ...imported.map(row => row.CanvasUID),
+        ...(selections.choices || []).map(row => row.CanvasUID)
+      ]);
+      document.querySelector('#cw-auto-canvas-notice')?.remove();
 
       const fresh = preview.events.filter(
         event => event?.uid && !known.has(event.uid)

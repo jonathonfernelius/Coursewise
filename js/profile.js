@@ -42,12 +42,12 @@
       <div class="cw-profile-streak-stat cw-streak-current ${current ? 'is-active' : 'is-idle'}">
         <span class="cw-profile-streak-art" aria-hidden="true">${flame}</span>
         <span class="cw-profile-streak-label">Current streak</span>
-        <div class="cw-profile-streak-value"><strong>${current}</strong><span>${current === 1 ? 'day' : 'days'}</span></div>
+        <div class="cw-profile-streak-value">${current} ${current === 1 ? 'day' : 'days'}</div>
       </div>
       <div class="cw-profile-streak-stat cw-streak-best ${longest ? 'has-record' : ''}">
         <span class="cw-profile-streak-art" aria-hidden="true">${trophy}</span>
         <span class="cw-profile-streak-label">Personal best</span>
-        <div class="cw-profile-streak-value"><strong>${longest}</strong><span>${longest === 1 ? 'day' : 'days'}</span></div>
+        <div class="cw-profile-streak-value">${longest} ${longest === 1 ? 'day' : 'days'}</div>
       </div>
     </div>`
       : `<p class="muted cw-profile-streak-loading">Your streaks couldn’t load right now. Try refreshing in a moment.</p>`;

@@ -3,11 +3,18 @@
   const T = Tidy, U = T.ui, root = document.getElementById("main");
   const collapsed = new Set(); let orderSaving = false, taskOrderSaving = false;
   const selected = new Set(); let selecting = false, deletingSelection = false, completingSelection = false;
+  document.addEventListener("pointerdown", event => {
+    if (event.target.closest(".list-sort")) return;
+    root.querySelectorAll(".sort-menu:not([hidden])").forEach(menu => {
+      menu.hidden = true;
+      menu.closest(".list-sort")?.querySelector("[data-sort-trigger]")?.setAttribute("aria-expanded", "false");
+    });
+  });
   const sortSettings = new Map();
   let sortSettingsOwner = null;
 
   const sortModes = [
-    ["manual", "Manual"],
+    ["manual", "Custom order"],
     ["title", "Alphabetically"],
     ["due", "Due date"],
     ["created", "Recently added"],
@@ -187,8 +194,13 @@
         return `<section class="card list-card" data-list-id="${T.esc(l.id)}"><div class="list-head">
           <button class="list-drag" draggable="true" data-drag-list="${T.esc(l.id)}" aria-label="Reorder ${T.esc(l.title)}" aria-keyshortcuts="ArrowUp ArrowDown" title="Drag to reorder; use arrow keys to move">${U.icons.grip}</button>
           <button class="list-toggle" data-collapse="${l.id}" aria-expanded="${open}">${U.icons.down}<h2>${T.esc(l.title)}</h2><span class="count">${items.length}</span></button>
-          <div class="list-sort"><label class="sr-only" for="sort-${T.esc(l.id)}">Sort ${T.esc(l.title)} tasks</label>
-            <select id="sort-${T.esc(l.id)}" data-sort-list="${T.esc(l.id)}" aria-label="Sort ${T.esc(l.title)} tasks">${sortModes.map(([value,label]) => `<option value="${value}"${sort.mode === value ? " selected" : ""}>${label}</option>`).join("")}</select>
+          <div class="list-sort">
+            <button type="button" class="sort-trigger" data-sort-trigger="${T.esc(l.id)}" aria-haspopup="listbox" aria-expanded="false" aria-label="Sort ${T.esc(l.title)} tasks; currently ${sortModes.find(([value]) => value === sort.mode)?.[1] || "Manual"}">
+              <span>Sort by${sort.mode === "manual" ? "" : ` · ${sortModes.find(([value]) => value === sort.mode)?.[1] || ""}`}</span><span class="sort-chevron" aria-hidden="true">${U.icons.down}</span>
+            </button>
+            <div class="sort-menu" id="sort-menu-${T.esc(l.id)}" role="listbox" aria-label="Sort ${T.esc(l.title)} tasks" hidden>
+              ${sortModes.map(([value,label]) => `<button type="button" class="sort-option" role="option" aria-selected="${sort.mode === value}" tabindex="${sort.mode === value ? "0" : "-1"}" data-sort-option="${value}" data-sort-list="${T.esc(l.id)}"><span class="sort-option-check" aria-hidden="true">✓</span><span>${label}</span></button>`).join("")}
+            </div>
             <button type="button" class="sort-direction" data-sort-direction="${T.esc(l.id)}" aria-label="Sort ${T.esc(l.title)} ${directionLabel}; switch to ${sort.direction === "asc" ? "descending" : "ascending"}" title="Switch to ${sort.direction === "asc" ? "descending" : "ascending"}"${sort.mode === "manual" ? " hidden" : ""}>${sort.direction === "asc" ? "↑" : "↓"}</button>
           </div>
           <button class="icon-btn" data-rename="${l.id}" aria-label="Rename ${T.esc(l.title)}">${U.icons.pencil}</button>
@@ -213,10 +225,50 @@
     updateSelectionUI();
     document.getElementById("new-list").onclick = () => nameDialog("New list", "", async v => { await T.addList(v); U.toast("List added"); render(); });
     root.querySelectorAll("[data-collapse]").forEach(b => b.onclick = () => { const id = b.dataset.collapse; collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); render(); });
-    root.querySelectorAll("[data-sort-list]").forEach(select => select.onchange = () => {
-      const current = sortFor(select.dataset.sortList);
-      setSort(select.dataset.sortList, { mode: select.value, direction: select.value === current.mode ? current.direction : "asc" });
-      render();
+    root.querySelectorAll("[data-sort-trigger]").forEach(trigger => {
+      const wrap = trigger.closest(".list-sort");
+      const menu = wrap.querySelector(".sort-menu");
+      const options = [...menu.querySelectorAll("[role=option]")];
+      const close = (returnFocus = false) => {
+        menu.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+        if (returnFocus) trigger.focus();
+      };
+      const open = () => {
+        root.querySelectorAll(".sort-menu:not([hidden])").forEach(other => {
+          other.hidden = true;
+          other.closest(".list-sort")?.querySelector("[data-sort-trigger]")?.setAttribute("aria-expanded", "false");
+        });
+        menu.hidden = false;
+        trigger.setAttribute("aria-expanded", "true");
+        (options.find(option => option.getAttribute("aria-selected") === "true") || options[0])?.focus();
+      };
+      trigger.addEventListener("click", () => menu.hidden ? open() : close());
+      trigger.addEventListener("keydown", event => {
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); open(); }
+      });
+      menu.addEventListener("click", event => {
+        const option = event.target.closest("[data-sort-option]");
+        if (!option) return;
+        const listId = option.dataset.sortList, current = sortFor(listId), mode = option.dataset.sortOption;
+        setSort(listId, { mode, direction: mode === current.mode ? current.direction : "asc" });
+        render();
+        [...root.querySelectorAll("[data-sort-trigger]")].find(item => item.dataset.sortTrigger === listId)?.focus();
+      });
+      menu.addEventListener("keydown", event => {
+        const index = options.indexOf(document.activeElement);
+        let next = null;
+        if (event.key === "ArrowDown") next = Math.min(index + 1, options.length - 1);
+        else if (event.key === "ArrowUp") next = Math.max(index - 1, 0);
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = options.length - 1;
+        else if (event.key === "Escape") { event.preventDefault(); close(true); return; }
+        else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); document.activeElement.click(); return; }
+        if (next !== null) { event.preventDefault(); options[next]?.focus(); }
+      });
+      wrap.addEventListener("focusout", event => {
+        if (!wrap.contains(event.relatedTarget)) close();
+      });
     });
     root.querySelectorAll("[data-sort-direction]").forEach(button => button.onclick = () => {
       const listId = button.dataset.sortDirection, current = sortFor(listId);

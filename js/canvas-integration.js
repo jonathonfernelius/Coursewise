@@ -19,6 +19,31 @@
 
   const style = document.createElement("style");
   style.textContent = `
+    .cw-canvas-identity{display:flex;align-items:center;gap:14px;margin:4px 0 18px}
+    .cw-canvas-symbol{display:grid;place-items:center;flex:none;width:52px;height:52px;border-radius:17px;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary)}
+    .cw-canvas-symbol svg{width:30px;height:30px;animation:cw-calendar-sway 7s ease-in-out infinite;transform-origin:50% 60%}
+    .cw-canvas-identity-copy{display:grid;gap:5px}
+    .cw-canvas-identity-copy strong{font-size:15px;font-weight:550;color:var(--fg)}
+    .cw-canvas-identity-copy>span{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-fg)}
+    .cw-canvas-identity-copy .cw-status-dot{width:6px;height:6px}
+    .cw-saved-status{display:flex;align-items:flex-start;gap:12px;padding:18px;margin:0 0 22px;border:1px solid color-mix(in srgb,var(--primary) 28%,var(--border));border-left:4px solid var(--primary);border-radius:16px;background:color-mix(in srgb,var(--primary) 9%,var(--card));color:var(--fg)}
+    .cw-saved-status-icon{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--card);color:var(--primary)}
+    .cw-saved-status-icon svg{width:23px;height:23px}
+    .cw-saved-status strong{display:block;font-size:16px;line-height:1.4;font-weight:650}
+    .cw-saved-status p{margin:5px 0 0;font-size:14px;line-height:1.55;color:var(--muted-fg)}
+    .cw-canvas-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px}
+    .cw-canvas-controls>.cw-canvas-actions{grid-column:1;grid-row:1;min-width:0}
+    .cw-canvas-controls>#cw-canvas-preview{grid-column:1/-1;grid-row:2;min-width:0}
+    .cw-canvas-footer{display:flex;justify-content:flex-end;grid-column:2;grid-row:1}
+    .cw-canvas-controls:has(#cw-canvas-preview:not(:empty))>.cw-canvas-footer{grid-row:3;margin-top:12px}
+    @media(max-width:360px){.cw-canvas-controls{column-gap:8px}.cw-canvas-controls #cw-preview-button{padding-inline:10px}}
+    .cw-canvas-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .cw-canvas-actions #cw-preview-button{font-size:13px;padding:10px 16px;min-height:40px;border-radius:12px}
+    .cw-canvas-footer #cw-disconnect{font-size:12px;padding:8px 4px;min-height:36px;background:transparent;border-color:transparent;color:var(--muted-fg);box-shadow:none}
+    .cw-canvas-footer #cw-disconnect:hover{color:var(--fg);text-decoration:underline}
+    #cw-canvas-preview:empty{display:none}
+    @keyframes cw-calendar-sway{0%,65%,100%{transform:rotate(0)}76%{transform:rotate(-3deg)}87%{transform:rotate(2deg)}}
+    @media(prefers-reduced-motion:reduce){.cw-canvas-symbol svg{animation:none}}
     .cw-connection-status {
       display: flex;
       align-items: center;
@@ -908,7 +933,15 @@
     const heading = element("h3", "Review your import");
     const description = element("p", "Choose what to bring into Coursewise. Nothing is imported until you confirm.", "muted");
     container.append(heading, description);
-    if (review.upToDate) container.appendChild(element("p", "Nothing new since you last checked. Your earlier choices are saved.", "cw-review-note"));
+    if (review.upToDate) {
+      const notice = element("div", "", "cw-saved-status");
+      notice.setAttribute("role", "status");
+      notice.insertAdjacentHTML("beforeend", '<span class="cw-saved-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>');
+      const copy = element("div", "");
+      copy.append(element("strong", "You’re up to date"), element("p", "Nothing new since your last check. Your earlier choices are saved."));
+      notice.appendChild(copy);
+      container.prepend(notice);
+    }
     if (review.error) {
       const warning = element("div", "");
       activity(warning, "error", "AI review paused", `${review.reviewed} of ${review.total ?? fresh.length} items reviewed. ${review.error} You can finish your selections and import now.`);
@@ -1296,30 +1329,16 @@
 
     if (connected) {
       content.innerHTML = `
-        <div class="cw-connection-status">
-          <span class="cw-status-dot" aria-hidden="true"></span>
-          <span>Canvas connected</span>
+        <div class="cw-canvas-identity">
+          <span class="cw-canvas-symbol" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="7" width="22" height="21" rx="5"/><path d="M11 4v6m10-6v6M5 14h22m-16 6 3 3 7-6"/></svg></span>
+          <div class="cw-canvas-identity-copy"><strong>Course calendar</strong><span><i class="cw-status-dot" aria-hidden="true"></i>Connected</span></div>
         </div>
-
-        <button
-          type="button"
-          id="cw-preview-button"
-          class="btn btn-primary"
-        >
-          Check Canvas
-        </button>
-
-        <div id="cw-canvas-preview"
-            style="margin-top:20px"></div>
-
-        <div class="cw-disconnect-action">
-          <button
-            type="button"
-            id="cw-disconnect"
-            class="btn btn-outline"
-          >
-            Disconnect Canvas
-          </button>
+        <div class="cw-canvas-controls">
+        <div class="cw-canvas-actions">
+          <button type="button" id="cw-preview-button" class="btn btn-primary">Check for updates</button>
+        </div>
+        <div id="cw-canvas-preview" style="margin-top:20px"></div>
+        <div class="cw-canvas-footer"><button type="button" id="cw-disconnect" class="btn btn-outline">Disconnect</button></div>
         </div>
       `;
 
@@ -1436,7 +1455,7 @@
 
     section.innerHTML = `
       <div class="section-head">
-        <h2>Canvas Integration</h2>
+        <h2>Canvas</h2>
       </div>
       <div id="cw-canvas-content">
         <p class="muted">Checking Canvas connection...</p>

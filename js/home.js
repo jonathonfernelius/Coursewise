@@ -84,7 +84,6 @@
       };
     });
     const maxPerDay = Math.max(1, ...weekDays.map(d => d.tasks.length));
-    const busiest = weekDays.reduce((best, d) => d.tasks.length > best.tasks.length ? d : best, weekDays[0]);
     const listName = task => T.state.lists.find(l => l.id === task.listId)?.title || "";
     const weekRow = (task, { showList, showDay }) => {
       const cat = T.cat(task.categoryId), day = weekDays.find(d => d.key === task.due);
@@ -110,11 +109,9 @@
           `<section class="week-group" aria-label="${T.esc(name)}"><div class="week-group-label"><h3>${T.esc(name)}</h3><span>${tasks.length} due</span></div>
             <ul class="week-rows">${tasks.map(task => weekRow(task, { showDay: true })).join("")}</ul></section>`).join("");
       }
-      const free = weekDays.filter(d => !d.tasks.length).map(d => d.short);
       return weekDays.filter(d => d.tasks.length).map(d =>
         `<section class="week-group${d.offset === 0 ? " is-today" : ""}" id="week-group-${d.offset}" aria-label="${T.esc(d.full)}"><div class="week-group-label"><h3>${T.esc(d.label)}</h3><span>${T.esc(d.sub)}</span></div>
-          <ul class="week-rows">${d.tasks.map(task => weekRow(task, { showList: true })).join("")}</ul></section>`).join("")
-        + (free.length ? `<p class="week-free">Free: ${T.esc(free.join(", "))}</p>` : "");
+          <ul class="week-rows">${d.tasks.map(task => weekRow(task, { showList: true })).join("")}</ul></section>`).join("");
     }
     const weekChart = weekDays.map(d => {
       const n = d.tasks.length, label = `${d.full}: ${n} ${n === 1 ? "task" : "tasks"}`;
@@ -137,7 +134,7 @@
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
           <div class="task-list${overdue.length ? " has-tasks" : ""}">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
         <section class="card week-card" aria-labelledby="week-heading"><div class="section-head"><h2 id="week-heading">This week</h2><span class="count" aria-label="${week.length} tasks due in the next seven days">${week.length}</span></div>
-          <div class="week-top"><div class="week-stat"><strong>${week.length ? `${week.length} ${week.length === 1 ? "thing" : "things"} due` : "Nothing due"}</strong><span>${week.length ? `Busiest: ${T.esc(busiest.short)} (${busiest.tasks.length})` : "Your week is wide open."}</span></div>
+          <div class="week-top"><div class="week-stat"><strong>${week.length ? `${week.length} ${week.length === 1 ? "thing" : "things"} due` : "Nothing due"}</strong></div>
             <div class="week-chart" aria-label="Tasks due each day this week">${weekChart}</div></div>
           ${week.length ? `<div class="week-seg" role="group" aria-label="Group this week by"><button type="button" data-week-mode="day" aria-pressed="${weekMode === "day"}">By day</button><button type="button" data-week-mode="course" aria-pressed="${weekMode === "course"}">By course</button></div>` : ""}
           <div id="week-body">${weekAgenda()}</div></section>

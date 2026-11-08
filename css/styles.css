@@ -232,16 +232,30 @@ button.week-bar.is-today:hover .week-bar-fill{background:var(--primary-dark)}
 .list-toggle[aria-expanded=false] svg{transform:rotate(-90deg)}
 .list-card .task-list{margin-top:.8rem}
 
-.list-sort{display:flex;flex:none;align-items:center;gap:.2rem}
-.list-sort select{max-width:10.5rem;height:2.2rem;padding:.25rem 1.7rem .25rem .55rem;border:1px solid var(--border);border-radius:.6rem;background:var(--card);font-size:.8rem}
-.sort-direction{display:grid;place-items:center;width:2.2rem;height:2.2rem;padding:0;border:1px solid var(--border);border-radius:.6rem;background:var(--card);font-size:1.1rem;line-height:1}
+.list-sort{position:relative;z-index:4;display:flex;flex:none;align-items:center;gap:.35rem}
+.sort-trigger{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-width:9.5rem;height:2.4rem;padding:.35rem .7rem .35rem .85rem;border:1px solid var(--border);border-radius:.75rem;background:var(--card);color:var(--fg);font:inherit;font-size:.84rem;text-align:left;cursor:pointer;transition:border-color .16s,box-shadow .16s,background .16s}
+.sort-trigger:hover{border-color:color-mix(in oklch,var(--primary) 45%,var(--border));background:color-mix(in oklch,var(--primary) 4%,var(--card))}
+.sort-trigger:focus-visible,.sort-trigger[aria-expanded=true]{outline:2px solid color-mix(in oklch,var(--primary) 58%,transparent);outline-offset:1px;border-color:var(--primary)}
+.sort-chevron{display:grid;place-items:center;color:var(--muted-fg);transition:transform .16s}
+.sort-chevron svg{width:.9rem;height:.9rem}
+.sort-trigger[aria-expanded=true] .sort-chevron{transform:rotate(180deg)}
+.sort-menu{position:absolute;top:calc(100% + .4rem);right:0;z-index:20;display:grid;gap:.15rem;width:max-content;min-width:100%;padding:.35rem;border:1px solid color-mix(in oklch,var(--border) 85%,var(--fg));border-radius:.85rem;background:var(--card);box-shadow:0 12px 30px oklch(.2 .02 var(--hue)/.16),0 2px 6px oklch(.2 .02 var(--hue)/.08)}
+.sort-menu[hidden]{display:none}
+.sort-option{display:flex;align-items:center;gap:.65rem;width:100%;min-height:2.35rem;padding:.45rem .65rem;border:0;border-radius:.55rem;background:transparent;color:var(--fg);font:inherit;font-size:.84rem;text-align:left;white-space:nowrap;cursor:pointer}
+.sort-option:hover,.sort-option:focus-visible{outline:none;background:var(--muted)}
+.sort-option[aria-selected=true]{background:color-mix(in oklch,var(--primary) 9%,var(--card));font-weight:500}
+.sort-option-check{display:grid;place-items:center;width:1rem;height:1rem;flex:none;color:var(--primary);font-weight:700;opacity:0}
+.sort-option[aria-selected=true] .sort-option-check{opacity:1}
+.sort-direction{display:grid;place-items:center;width:2.4rem;height:2.4rem;padding:0;border:1px solid var(--border);border-radius:.75rem;background:var(--card);color:var(--fg);font-size:1.1rem;line-height:1;cursor:pointer;transition:background .16s,border-color .16s}
 .sort-direction[hidden]{display:none}
-.sort-direction:hover{background:var(--muted)}
+.sort-direction:hover{background:var(--muted);border-color:color-mix(in oklch,var(--primary) 45%,var(--border))}
+.sort-direction:focus-visible{outline:2px solid color-mix(in oklch,var(--primary) 58%,transparent);outline-offset:1px}
 @media(max-width:560px){
   .list-head{flex-wrap:wrap}
   .list-toggle{flex:1 1 calc(100% - 8rem)}
   .list-sort{order:2;margin-left:2.4rem;flex:1 1 auto}
-  .list-sort select{max-width:none;min-width:0;flex:1}
+  .sort-trigger{min-width:0;flex:1}
+  .sort-menu{left:0;right:auto}
   .list-head>[data-rename],.list-head>[data-delete]{order:1}
 }
 
@@ -598,3 +612,31 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 .cw-streak-info summary:hover,.cw-streak-info[open] summary{background:var(--muted);color:var(--primary)}
 .cw-streak-info summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .cw-streak-info-copy{position:absolute;right:0;top:calc(100% + .35rem);z-index:5;width:min(280px,100%);padding:1rem;background:var(--card);border:1px solid var(--border);border-radius:.85rem;box-shadow:0 8px 24px rgb(0 0 0/.1);font-size:.78rem;line-height:1.6;color:var(--fg)}
+
+/* Raise the open sort control above every sibling card/control. */
+.list-sort{z-index:1}
+.list-sort:has(.sort-trigger[aria-expanded="true"]){z-index:31}
+.list-card:has(.sort-trigger[aria-expanded="true"]){position:relative;z-index:30;overflow:visible}
+.sort-menu{max-width:calc(100vw - 2rem);max-height:min(22rem,60dvh);overflow-y:auto;overscroll-behavior:contain}
+/* Quiet streak tiles with equal-size number/unit bubbles. */
+.cw-profile-streak-grid{gap:.75rem}
+.cw-profile-streak-stat{padding:1rem .6rem;gap:.6rem;background:color-mix(in srgb,var(--primary) 4%,var(--card));border:1px solid var(--border);border-radius:1.2rem}
+.cw-profile-streak-art{width:2.8rem;height:2.8rem;margin:0;background:color-mix(in srgb,var(--primary) 7%,var(--card))}
+.cw-streak-current .cw-profile-streak-art{background:color-mix(in srgb,#f2a43b 12%,var(--card))}
+.cw-profile-streak-label{font-size:.76rem;font-weight:500}
+.cw-profile-streak-value{display:inline-flex;align-items:center;justify-content:center;min-width:4.2rem;padding:.38rem .85rem;background:color-mix(in srgb,var(--primary) 10%,var(--card));color:var(--primary-dark,var(--primary));border:1px solid color-mix(in srgb,var(--primary) 12%,var(--border));border-radius:99px;font-size:.95rem;line-height:1.3;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0}
+.cw-streak-best.has-record .cw-streak-trophy{animation:cw-trophy-float 6s ease-in-out infinite}
+@keyframes cw-trophy-float{0%,65%,100%{transform:translateY(0)}80%{transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.cw-streak-best.has-record .cw-streak-trophy{animation:none}}
+
+/* Mobile sort controls: dedicated row and comfortable tap targets. */
+@media(max-width:560px){
+  .list-head .list-sort{flex:1 0 100%;width:100%;margin-left:0;min-width:0;margin-top:.3rem}
+  .list-head .sort-trigger{min-height:44px;height:auto;min-width:0;padding:.55rem .75rem}
+  .list-head .sort-trigger>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .list-head .sort-menu{left:0;right:0;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+  .list-head .sort-option{min-height:44px;white-space:normal}
+  .list-head .sort-direction{width:44px;height:44px;flex:none}
+  .list-head>[data-rename],.list-head>[data-delete]{min-width:44px;min-height:44px}
+  .list-head .list-toggle h2{overflow-wrap:anywhere}
+}
