@@ -9,17 +9,96 @@
     ["One thing at a time. You've got this.", "A little progress adds up.", "Pick one and get started.", "You've got a plan. Now make it happen."],
     ["Deep breath. One task at a time.", "You don't have to do it all at once.", "Start somewhere. Momentum will follow.", "Big list, small steps. You've got this."]
   ];
+
+  /* DECK THE DIVS — The North Pole message bank */
+  const NORTH_POLE_SNAPSHOT_BANK = [
+    // 0 tasks remaining
+    [
+      "Every present is wrapped. Time for cocoa.",
+      "The elves have clocked out. You should too.",
+      "All deliveries complete. Santa approves.",
+      "Nothing left but cookies and Christmas cheer."
+    ],
+
+    // 1–2 tasks remaining
+    [
+      "Almost time to hang up your elf hat.",
+      "Just a little more holiday magic to make.",
+      "A couple more gifts, then cocoa time.",
+      "The finish line is wrapped in a bow."
+    ],
+
+    // 3–5 tasks remaining
+    [
+      "One present at a time, little elf.",
+      "A little Christmas magic goes a long way.",
+      "Every wrapped present counts.",
+      "Keep wrapping. You've got this!"
+    ],
+
+    // 6+ tasks remaining
+    [
+      "Even Santa takes things one gift at a time.",
+      "Big list, little steps, plenty of cocoa.",
+      "The elves believe in you!",
+      "Start with one present. The others can wait."
+    ]
+  ];
+
+  
   function snapshotMessage(remaining, day) {
-    const tier = remaining === 0 ? 0 : remaining <= 2 ? 1 : remaining <= 5 ? 2 : 3;
-    const storageKey = `coursewise-snapshot:${day}:${tier}`;
+    const tier =
+      remaining === 0 ? 0 :
+      remaining <= 2 ? 1 :
+      remaining <= 5 ? 2 : 3;
+
+    // Check whether The North Pole is selected.
+    const isChristmas =
+      document.documentElement.dataset.whimsy ===
+      "northpole";
+
+    // Use Christmas messages only for The North Pole.
+    const bank = isChristmas
+      ? NORTH_POLE_SNAPSHOT_BANK
+      : SNAPSHOT_BANK;
+
+    // Each world has its own daily message selection.
+    const storageKey = isChristmas
+      ? `coursewise-snapshot:northpole:${day}:${tier}`
+      : `coursewise-snapshot:${day}:${tier}`;
+
     let index;
+
     try {
-      const saved = Number(localStorage.getItem(storageKey));
-      if (localStorage.getItem(storageKey) !== null && Number.isInteger(saved) && saved >= 0 && saved < SNAPSHOT_BANK[tier].length) index = saved;
-      else { index = Math.floor(Math.random() * SNAPSHOT_BANK[tier].length); localStorage.setItem(storageKey, String(index)); }
-    } catch { index = Math.floor(Math.random() * SNAPSHOT_BANK[tier].length); }
-    return SNAPSHOT_BANK[tier][index];
+      const saved = localStorage.getItem(storageKey);
+      const number = Number(saved);
+
+      if (
+        saved !== null &&
+        Number.isInteger(number) &&
+        number >= 0 &&
+        number < bank[tier].length
+      ) {
+        index = number;
+      } else {
+        index = Math.floor(
+          Math.random() * bank[tier].length
+        );
+
+        localStorage.setItem(
+          storageKey,
+          String(index)
+        );
+      }
+    } catch {
+      index = Math.floor(
+        Math.random() * bank[tier].length
+      );
+    }
+
+    return bank[tier][index];
   }
+
 
   const FLAME_SVG = `<svg class="flame" viewBox="0 0 24 28" aria-hidden="true"><path class="flame-outer" d="M12 1c1.2 4.6 7.5 7.4 7.5 14.2A7.5 7.5 0 0 1 12 27a7.5 7.5 0 0 1-7.5-11.8c0 2.3 1.4 3.9 3 4.3C6.8 14 9 5.5 12 1z"/><path class="flame-inner" d="M12 12c.7 2.6 3.7 4 3.7 7.3a3.7 3.7 0 0 1-7.4 0c0-1.7.9-2.7 1.7-3.2.2 1 .8 1.6 1.4 1.7C11 16.3 11.4 14 12 12z"/></svg>`;
 

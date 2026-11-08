@@ -6,6 +6,27 @@
 "use strict";
 
 const THEMES = {
+  northpole: {
+    name: "The North Pole",
+    words: ["Santa's Workshop","Today's Deliveries","Missed Deliveries",
+      "This Week's Deliveries","The Gift List","Santa's Calendar",
+      "The Cozy Workshop","The Elf Circle","Fellow Elves",
+      "Find an Elf","Letters to Santa","Today's Deliveries","Unwrapped Gifts"],
+    done: "Present Wrapped",
+    cheer: "Spread Cheer",
+    messages: ["Another present wrapped!","The elves are celebrating!",
+      "The workshop is cheering you on!","A little Christmas magic, delivered."],
+    rare: ["BREAKING: Local elf spotted absolutely crushing their to-do list.",
+      "An anonymous reindeer would like you to know you're doing great.",
+      "Elf management has approved an emergency cookie break.",
+      "The workshop's Employee of the Month award is suspiciously shaped like you.",
+      "Your productivity has been reported to the highest levels of elf management."],
+    empty: ["The sleigh is packed. Time for cocoa.","Not a present left to wrap!"],
+    overdueEmpty: ["No deliveries left behind!"],
+    imported: "New deliveries have arrived at the workshop!",
+    palette: ["#F45850","#79D57A","#F2C75B","#5FB9F5","#F18AB7"]
+  },
+
   cottage: {
     name:"The Secret Garden",
     words:["The Morning Garden","Today's Blooms","Forgotten Seeds",
@@ -361,7 +382,93 @@ const car = `
   <circle cx="132" cy="194" r="9" fill="#adb9b9"/>
   <circle cx="244" cy="194" r="9" fill="#adb9b9"/>`;
 
+/* DECK THE DIVS — North Pole illustration. The lights and elf stay in one compact background. */
+function northPoleArtwork(state = "wrapping") {
+  const bulbColors = ["#F45850","#F2C75B","#5FB9F5","#79D57A","#F18AB7"];
+  const lights = Array.from({length:14},(_,i)=>{
+    const x=8+i*26, t=x/360, y=13+60*t*(1-t);
+    const color=bulbColors[i%bulbColors.length];
+    return `<g transform="translate(${x} ${y})">
+      <circle cy="11" r="15" fill="${color}" opacity=".20"/>
+      <rect x="-3" y="-1" width="6" height="7" rx="1" fill="#182C20"/>
+      <path d="M-4 10Q-4 5 0 5Q4 5 4 10L3 17Q0 21 -3 17Z" fill="${color}"/>
+      <path d="M-1.5 9L-2 13" stroke="#FFF" stroke-width="1.4" opacity=".7"/>
+    </g>`;
+  }).join("");
+  const elf = `<g transform="translate(222 96)">
+    <rect x="69" y="83" width="42" height="39" rx="4" fill="#C94B52"/>
+    <path d="M90 83V122M69 101H111" stroke="#F4C96F" stroke-width="6"/>
+    <path d="M10 51Q18 9 48 4L71 42L62 57Z" fill="#B93D48"/>
+    <circle cx="68" cy="42" r="8" fill="#FFF1D8"/>
+    <circle cx="43" cy="62" r="27" fill="#F6C9A4"/>
+    <path d="M17 54Q43 42 69 54" stroke="#FFF1D8" stroke-width="9" stroke-linecap="round"/>
+    <path d="M18 65L5 54L10 77Z M68 65L81 54L76 77Z" fill="#F6C9A4"/>
+    <circle cx="35" cy="62" r="2.5" fill="#342B26"/>
+    <circle cx="52" cy="62" r="2.5" fill="#342B26"/>
+    <path d="M37 74Q44 81 52 73" stroke="#8D5144" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="24" cy="70" r="5" fill="#ECA59B" opacity=".5"/>
+    <circle cx="62" cy="70" r="5" fill="#ECA59B" opacity=".5"/>
+    <path d="M22 92Q43 79 65 92L73 124H13Z" fill="#5B8A64"/>
+    <path d="M28 90L43 104L58 90" stroke="#F4C96F" stroke-width="4"/>
+    <circle cx="43" cy="112" r="3" fill="#F4C96F"/>
+    <path d="M18 100L5 115M68 100L80 112" stroke="#F6C9A4" stroke-width="8" stroke-linecap="round"/>
+    <path d="M29 124V139H20M57 124V139H66" stroke="#473A32" stroke-width="9" stroke-linecap="round"/>
+  </g>`;
+  const scenes = {
+    planning: `<g transform="translate(247 145)">
+      <rect width="44" height="78" rx="5" fill="#FFF1D4" stroke="#CDAE79" stroke-width="2"/>
+      <path d="M10 15H34M10 27H34M10 39H34M10 51H34M10 63H29" stroke="#B58D6C" stroke-width="2"/>
+      <path d="M9 8L12 11L17 5" stroke="#548A62" stroke-width="2"/>
+    </g>`,
+    wrapping: `<path d="M276 209Q256 193 271 183Q291 173 289 192" stroke="#F4C96F" stroke-width="3"/>
+      <path d="M283 216Q299 206 308 219" stroke="#D95D68" stroke-width="3"/>`,
+    stacking: `<g transform="translate(207 153)">
+      <rect x="4" y="39" width="42" height="38" rx="3" fill="#B94C57"/>
+      <path d="M25 39V77M4 57H46" stroke="#EBC76C" stroke-width="5"/>
+      <rect x="13" y="5" width="35" height="32" rx="3" fill="#548A63"/>
+      <path d="M30 5V37M13 20H48" stroke="#F8E7C4" stroke-width="4"/>
+      <path d="M30 5Q7 -10 30 2Q51 -10 30 5" fill="#EBC76C"/>
+    </g>`,
+    mountain: `<g transform="translate(181 110)">
+      <rect x="0" y="78" width="48" height="46" rx="3" fill="#B94C57"/>
+      <path d="M24 78V124M0 99H48" stroke="#F4CA76" stroke-width="5"/>
+      <rect x="48" y="85" width="38" height="39" rx="3" fill="#568E67"/>
+      <path d="M67 85V124M48 103H86" stroke="#F9E3BD" stroke-width="5"/>
+      <rect x="11" y="38" width="36" height="38" rx="3" fill="#D6AA5F"/>
+      <path d="M29 38V76M11 55H47" stroke="#FFF4D8" stroke-width="5"/>
+      <rect x="45" y="43" width="33" height="39" rx="3" fill="#B84A57"/>
+      <path d="M61 43V82M45 62H78" stroke="#F4CA76" stroke-width="4"/>
+      <rect x="23" y="5" width="39" height="31" rx="3" fill="#477F5C"/>
+      <path d="M42 5V36M23 19H62" stroke="#F8DEAC" stroke-width="4"/>
+    </g>`
+  };
+  const sleepy = `<g transform="translate(236 108)">
+    <rect x="56" y="39" width="65" height="89" rx="5" fill="#A45345"/>
+    <rect x="67" y="56" width="43" height="61" rx="3" fill="#352924"/>
+    <rect x="51" y="33" width="75" height="12" rx="3" fill="#CF9868"/>
+    <path d="M79 108Q67 91 80 78Q83 93 91 72Q107 91 99 108Z" fill="#F3B74E"/>
+    <path d="M85 108Q79 96 90 88Q100 102 94 108Z" fill="#FFE39B"/>
+    <path d="M9 76Q-3 59 15 47Q27 19 46 24L54 63Z" fill="#B94C57"/>
+    <circle cx="45" cy="65" r="20" fill="#F5C9A4"/>
+    <path d="M26 57Q45 49 64 57" stroke="#FFF2DA" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="54" cy="31" r="7" fill="#FFF2DA"/>
+    <path d="M33 65Q38 70 43 65M48 65Q53 70 58 65" stroke="#785048" stroke-width="2.5"/>
+    <path d="M41 76Q46 80 51 76" stroke="#A16A5C" stroke-width="2"/>
+    <path d="M22 88Q46 77 72 92L79 126H9Z" fill="#67916A"/>
+    <path d="M15 109Q45 99 75 113" stroke="#F4D19A" stroke-width="4"/>
+    <rect x="3" y="119" width="16" height="15" rx="3" fill="#EBC7A4"/>
+    <path d="M19 122Q30 122 25 131L19 132" stroke="#EBC7A4" stroke-width="3"/>
+    <g fill="#F8E8CC" font-family="sans-serif"><text x="3" y="45" font-size="11">z</text>
+      <text x="12" y="30" font-size="15">z</text><text x="27" y="14" font-size="19">Z</text></g>
+  </g>`;
+  return svg(`<path d="M0 13Q180 43 360 13" stroke="#182C20" stroke-width="2.5"/>
+    ${lights}${state === "done" ? sleepy : `${scenes[state] || ""}${elf}`}`);
+}
+
+window.CoursewiseNorthPoleArt = northPoleArtwork;
+
 const ART = {
+  northpole: {hero:northPoleArtwork(),scene:northPoleArtwork("stacking"),trim:northPoleArtwork()},
   cottage:{
     hero:svg(blooms),
     scene:svg(`<g fill="#b1d1a3"><path d="M0 230h360v10H0Z"/></g>
@@ -2429,95 +2536,396 @@ window.CoursewiseWhimsy = {
 })();
 
 
-
-/* V5.6 — Mobile Whimsy Snapshot repairs */
+/* ===========================================
+   DECK THE DIVS — Mobile Snapshot repairs
+   Original Whimsy worlds keep their desktop design.
+   =========================================== */
 (() => {
   if (document.getElementById("cw-whimsy-mobile-v56")) return;
-
   const style = document.createElement("style");
   style.id = "cw-whimsy-mobile-v56";
-
   style.textContent = `
-    @media (max-width: 650px) {
-
-      /* Keep Snapshot content above decorations */
+    @media (max-width:650px) {
       html[data-whimsy]:not([data-whimsy="off"]) .hero {
-        isolation: isolate;
-        min-height: 13rem;
+        isolation:isolate; min-height:13rem;
       }
-
-      /* Protect the label and text */
       html[data-whimsy]:not([data-whimsy="off"]) .hero > small,
       html[data-whimsy]:not([data-whimsy="off"]) .hero h2,
       html[data-whimsy]:not([data-whimsy="off"]) .hero p {
-        position: relative;
-        z-index: 6 !important;
+        position:relative; z-index:6!important;
       }
-
-      /* Keep the heading readable */
       html[data-whimsy]:not([data-whimsy="off"]) .hero h2 {
-        font-size: clamp(1.35rem, 5.6vw, 1.6rem);
-        line-height: 1.2;
+        font-size:clamp(1.35rem,5.6vw,1.6rem);line-height:1.2;
       }
-
-      /* Give artwork and messages separate space */
       html[data-whimsy]:not([data-whimsy="off"]) .hero p {
-        max-width: 64%;
-        font-size: .8rem;
-        line-height: 1.4;
-        overflow-wrap: break-word;
+        max-width:64%;font-size:.8rem;line-height:1.4;overflow-wrap:break-word;
       }
-
-      /* Keep completed-today counter visible */
       html[data-whimsy]:not([data-whimsy="off"]) .hero .hero-stat {
-        position: absolute !important;
-        top: 18px !important;
-        right: 16px !important;
-        z-index: 8 !important;
+        position:absolute!important;top:18px!important;right:16px!important;z-index:8!important;
       }
-
-      /* Keep the streak anchored to the bottom */
-      html[data-whimsy]:not([data-whimsy="off"])
-      .hero.has-streak > .streak-bar {
-        position: absolute !important;
-        bottom: 0 !important;
-        top: auto !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 7 !important;
+      html[data-whimsy]:not([data-whimsy="off"]) .hero.has-streak > .streak-bar {
+        position:absolute!important;bottom:0!important;top:auto!important;
+        left:0!important;right:0!important;z-index:7!important;
       }
-
-      /* Mission Control: remove problematic glow */
       html[data-whimsy="space"] .hero {
-        background-image:
-          var(--cw-w-hero),
-          linear-gradient(120deg, #151c40, #383166)
-          !important;
-        background-size: auto 63%, cover !important;
-        background-position:
-          right bottom 31px, center !important;
-        background-repeat: no-repeat !important;
+        background-image:var(--cw-w-hero),linear-gradient(120deg,#151c40,#383166)!important;
+        background-size:auto 63%,cover!important;
+        background-position:right bottom 31px,center!important;
+        background-repeat:no-repeat!important;
       }
-
       html[data-whimsy="space"] .hero > small {
-        color: #ffffff !important;
-        opacity: 1 !important;
-        text-shadow: 0 1px 4px #151c40;
+        color:#fff!important;opacity:1!important;text-shadow:0 1px 4px #151c40;
       }
-
-      /* Move crowded illustrations down and right */
       html[data-whimsy="dinos"] .hero,
       html[data-whimsy="faeries"] .hero,
       html[data-whimsy="west"] .hero,
       html[data-whimsy="sports"] .hero,
       html[data-whimsy="cars"] .hero {
-        background-size: auto 56%, cover !important;
-        background-position:
-          right bottom 28px, center !important;
-        background-repeat: no-repeat !important;
+        background-size:auto 56%,cover!important;
+        background-position:right bottom 28px,center!important;
+        background-repeat:no-repeat!important;
       }
     }
   `;
-
   document.head.appendChild(style);
+})();
+
+/* ===========================================
+   DECK THE DIVS — North Pole ambience
+   Dedicated snowfall layers: no pseudo-element collisions.
+   =========================================== */
+(() => {
+  if (document.getElementById("cw-northpole-ambience")) return;
+  const style=document.createElement("style");
+  style.id="cw-northpole-ambience";
+  style.textContent=`
+    html[data-whimsy="northpole"] {--cw-w-trim:none!important;}
+    html[data-whimsy="northpole"] .cw-w-scene,
+    html[data-whimsy="northpole"] .cw-w-friend-art,
+    html[data-whimsy="northpole"] .page-head h1::after,
+    html[data-whimsy="northpole"] .card:not(.overdue-card):not(.cw-f-card)::before {
+      display:none!important;content:none!important;
+    }
+    html[data-whimsy="northpole"] .hero {
+      position:relative;isolation:isolate;overflow:hidden;
+      background-image:var(--cw-w-hero),
+        radial-gradient(ellipse at 78% 16%,rgba(255,191,91,.14),transparent 46%),
+        radial-gradient(ellipse at 20% 80%,rgba(40,104,78,.35),transparent 65%),
+        linear-gradient(125deg,#102B2B,#173F38 55%,#183B37)!important;
+      background-size:auto 100%,cover,cover,cover!important;
+      background-position:right bottom,center,center,center!important;
+      background-repeat:no-repeat!important;
+      box-shadow:0 15px 32px rgba(12,40,32,.20)!important;
+    }
+    html[data-whimsy="northpole"] .hero > .cw-np-night {
+      position:absolute!important;inset:0!important;z-index:1!important;
+      pointer-events:none!important;
+      background:
+        radial-gradient(ellipse at 66% 12%,rgba(255,185,72,.24),transparent 28%),
+        radial-gradient(ellipse at 83% 13%,rgba(76,153,255,.24),transparent 22%),
+        radial-gradient(ellipse at 96% 12%,rgba(247,76,105,.23),transparent 20%),
+        linear-gradient(115deg,rgba(5,16,30,.78),rgba(8,29,36,.52) 60%,rgba(7,23,31,.44));
+      animation:cwNPNightGlow 6s ease-in-out infinite alternate;
+    }
+    html[data-whimsy="northpole"] .hero > .cw-np-snow {
+      position:absolute!important;inset:0!important;z-index:4!important;
+      pointer-events:none!important;overflow:hidden;
+    }
+    html[data-whimsy="northpole"] .cw-np-flake {
+      position:absolute;top:-18px;left:var(--x);color:#fff;font-size:var(--size);
+      line-height:1;opacity:0;pointer-events:none;
+      text-shadow:0 0 5px rgba(255,255,255,.85),0 0 10px rgba(201,229,255,.45);
+      animation:cwNPSnowfall var(--duration) linear var(--delay) infinite;
+    }
+    html[data-whimsy="northpole"] .hero > :not(.cw-np-night):not(.cw-np-snow) {
+      position:relative;z-index:5!important;
+    }
+    html[data-whimsy="northpole"] .hero.has-streak > .streak-bar {z-index:6!important;}
+    @keyframes cwNPSnowfall {
+      0% {transform:translate3d(0,-15px,0);opacity:0}
+      12%,85% {opacity:.72}
+      100% {transform:translate3d(24px,300px,0);opacity:0}
+    }
+    @keyframes cwNPNightGlow {from{opacity:.85}to{opacity:1}}
+    @media (max-width:650px) {
+      html[data-whimsy="northpole"] .hero {
+        background-size:auto 77%,cover,cover,cover!important;
+        background-position:right bottom 28px,center,center,center!important;
+      }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      html[data-whimsy="northpole"] .cw-np-flake {
+        animation:none!important;opacity:.45;top:var(--static-y);
+      }
+      html[data-whimsy="northpole"] .hero > .cw-np-night {animation:none!important;}
+    }
+  `;
+  document.head.appendChild(style);
+  function decorate(){
+    if(document.documentElement.dataset.whimsy!=="northpole")return;
+    document.querySelectorAll('body[data-page="home"] .hero').forEach(hero=>{
+      if(hero.querySelector(':scope > .cw-np-snow'))return;
+      const night=document.createElement('div');night.className='cw-np-night';night.setAttribute('aria-hidden','true');
+      const snow=document.createElement('div');snow.className='cw-np-snow';snow.setAttribute('aria-hidden','true');
+      for(let i=0;i<28;i++){
+        const flake=document.createElement('span');flake.className='cw-np-flake';
+        flake.textContent=i%5===0?'❄':'•';
+        flake.style.setProperty('--x',`${(i*37+11)%97}%`);
+        flake.style.setProperty('--size',`${7+(i%4)*2}px`);
+        flake.style.setProperty('--duration',`${11+(i%7)*2}s`);
+        flake.style.setProperty('--delay',`${-i*2.3}s`);
+        flake.style.setProperty('--static-y',`${(i*41)%90}%`);
+        snow.appendChild(flake);
+      }
+      hero.append(night,snow);
+    });
+  }
+  let queued=false;
+  function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;decorate()})}
+  new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['data-whimsy']});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate,{once:true});
+  else decorate();
+})();
+
+/* ===========================================
+   DECK THE DIVS — Full-viewport snowfall
+   Icy blue in light mode, white in dark mode.
+   =========================================== */
+(() => {
+  const ID='cw-np-fullpage-snow';
+  if(document.getElementById('cw-northpole-page-snow-style'))return;
+  const style=document.createElement('style');style.id='cw-northpole-page-snow-style';
+  style.textContent=`
+    #${ID} {
+      position:fixed;inset:0;width:100%;height:100vh;height:100dvh;
+      pointer-events:none!important;overflow:hidden;z-index:100;contain:layout paint;
+    }
+    html:not([data-whimsy="northpole"]) #${ID} {display:none!important;}
+    #${ID} .cw-np-page-flake {
+      position:absolute;top:-24px;left:var(--x);color:#729CB6;
+      font-size:var(--size);line-height:1;opacity:0;pointer-events:none;
+      text-shadow:0 0 5px rgba(114,156,182,.35),0 0 10px rgba(114,156,182,.15);
+      animation:cwNPFullSnowfall var(--duration) linear var(--delay) infinite;
+      will-change:transform;
+    }
+    html[data-theme="dark"] #${ID} .cw-np-page-flake,
+    html[data-appearance="dark"] #${ID} .cw-np-page-flake,
+    html.dark #${ID} .cw-np-page-flake,
+    html[data-mode="dark"] #${ID} .cw-np-page-flake {
+      color:#ECF6FF;
+      text-shadow:0 0 6px rgba(255,255,255,.75),0 0 12px rgba(185,220,255,.35);
+    }
+    @keyframes cwNPFullSnowfall {
+      0% {transform:translate3d(0,-25px,0);opacity:0}
+      10%,85% {opacity:var(--opacity)}
+      100% {transform:translate3d(var(--drift),calc(100dvh + 50px),0);opacity:0}
+    }
+    @media(max-width:650px) {#${ID} .cw-np-page-flake {font-size:calc(var(--size)*.8)}}
+    @media(prefers-reduced-motion:reduce) {
+      #${ID} .cw-np-page-flake {
+        animation:none!important;transform:none!important;top:var(--static-y);
+        opacity:.25;will-change:auto;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  function sync(){
+    const enabled=document.documentElement.dataset.whimsy==='northpole';
+    let snow=document.getElementById(ID);
+    if(!enabled){if(snow)snow.remove();return;}
+    if(snow||!document.body)return;
+    snow=document.createElement('div');snow.id=ID;snow.setAttribute('aria-hidden','true');
+    const count=window.innerWidth<=650?32:55;
+    for(let i=0;i<count;i++){
+      const flake=document.createElement('span');flake.className='cw-np-page-flake';
+      flake.textContent=i%7===0?'❄':'•';
+      const duration=13+(i%9)*2.5;
+      flake.style.setProperty('--x',`${(i*37.7+11)%100}%`);
+      flake.style.setProperty('--size',`${6+(i%5)*2}px`);
+      flake.style.setProperty('--duration',`${duration}s`);
+      flake.style.setProperty('--delay',`${-((i*3.7)%duration)}s`);
+      flake.style.setProperty('--drift',`${((i%7)-3)*12}px`);
+      flake.style.setProperty('--opacity',String(.25+(i%4)*.1));
+      flake.style.setProperty('--static-y',`${(i*23)%95}%`);
+      snow.appendChild(flake);
+    }
+    document.body.appendChild(snow);
+  }
+  new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-whimsy']});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});
+  else sync();
+})();
+
+/* ===========================================
+   DECK THE DIVS — Christmas card decorations
+   All existing snow and Snapshot styles are preserved.
+   =========================================== */
+(() => {
+  if(document.getElementById('cw-np-card-style'))return;
+  function svgImg(content,w=160,h=100){
+    return `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" fill="none">${content}</svg>`)}")`;
+  }
+  const colors=['#F85C58','#FFD45C','#62BAFF','#81DB80','#F18CB8'];
+  const bulbs=Array.from({length:9},(_,i)=>{
+    const x=12+i*17,y=12+10*Math.sin(Math.PI*x/160),c=colors[i%colors.length];
+    return `<g transform="translate(${x} ${y})"><circle cy="9" r="13" fill="${c}" opacity=".18"/>
+    <rect x="-2.5" y="-1" width="5" height="5" rx="1" fill="#25402D"/>
+    <path d="M-3.5 8Q-3.5 4 0 4Q3.5 4 3.5 8L2.5 13Q0 17 -2.5 13Z" fill="${c}"/></g>`;
+  }).join('');
+  const garland=svgImg(`<path d="M0 8Q80 47 160 8" stroke="#315D3A" stroke-width="7"/>
+    ${Array.from({length:22},(_,i)=>{const x=i*7.5,y=8+10*Math.sin(Math.PI*x/160);return `<path d="M${x} ${y}l-6 -8M${x} ${y}l6 -7M${x} ${y}l-4 9" stroke="#508450" stroke-width="2.5"/>`;}).join('')}
+    <path d="M0 12Q80 52 160 12" stroke="#21362A" stroke-width="1.8"/>${bulbs}
+    <g transform="translate(142 25)"><path d="M0 0Q-21 -17 -20 0Q-19 14 0 2Z" fill="#B8434D"/>
+    <path d="M0 0Q21 -17 20 0Q19 14 0 2Z" fill="#C85259"/><circle r="5" fill="#8D3039"/>
+    <path d="M-2 4L-9 27L1 23L8 28L4 4" fill="#B8434D"/></g>`);
+  const presents=svgImg(`<ellipse cx="82" cy="90" rx="66" ry="7" fill="#40533E" opacity=".12"/>
+    <rect x="25" y="42" width="59" height="47" rx="4" fill="#B8454D"/>
+    <path d="M54 42V89M25 62H84" stroke="#F1C66C" stroke-width="7"/>
+    <path d="M54 42C25 33 35 17 52 35C67 14 83 32 54 42Z" fill="#F1C66C"/>
+    <rect x="87" y="53" width="48" height="36" rx="4" fill="#477C59"/>
+    <path d="M111 53V89M87 69H135" stroke="#F7E2BD" stroke-width="6"/>
+    <path d="M111 53C90 42 94 31 109 46C123 29 135 44 111 53Z" fill="#F7E2BD"/>`);
+  const ornaments=svgImg(`<path d="M35 0V37M80 0V19M123 0V43" stroke="#B5A17A" stroke-width="1.6"/>
+    <rect x="29" y="34" width="12" height="7" rx="2" fill="#CBAE72"/>
+    <circle cx="35" cy="57" r="17" fill="#B7444D"/>
+    <rect x="74" y="16" width="12" height="7" rx="2" fill="#CBAE72"/>
+    <circle cx="80" cy="39" r="16" fill="#D8AF5F"/>
+    <rect x="117" y="40" width="12" height="7" rx="2" fill="#CBAE72"/>
+    <circle cx="123" cy="63" r="16" fill="#477A58"/>`);
+  const holly=svgImg(`<g transform="translate(16 8)">
+    <path d="M48 46Q12 12 9 27L18 35 9 43Q28 65 48 46Z" fill="#54835A"/>
+    <path d="M48 46Q77 7 94 16L89 29 104 33Q89 61 48 46Z" fill="#376B48"/>
+    <path d="M48 46Q57 69 87 77L77 66 93 60Q72 44 48 46Z" fill="#6B9666"/>
+    <circle cx="44" cy="45" r="8" fill="#C84C51"/>
+    <circle cx="56" cy="48" r="8" fill="#C84C51"/>
+    <circle cx="49" cy="58" r="8" fill="#C84C51"/></g>`);
+  const bells=svgImg(`<path d="M65 21Q80 11 95 21" stroke="#B7484C" stroke-width="8"/>
+    <path d="M80 22L57 35M80 22L103 35" stroke="#B7484C" stroke-width="5"/>
+    <path d="M43 36Q55 27 67 36L73 65H37Z" fill="#D9AD53"/>
+    <path d="M93 36Q105 27 117 36L123 65H87Z" fill="#E8C16C"/>
+    <path d="M37 65H73M87 65H123" stroke="#9D783B" stroke-width="5"/>
+    <circle cx="55" cy="70" r="5" fill="#9D783B"/>
+    <circle cx="105" cy="70" r="5" fill="#9D783B"/>`);
+  const style=document.createElement('style');style.id='cw-np-card-style';
+  style.textContent=`
+    html[data-whimsy="northpole"] .cw-np-decor {
+      position:absolute!important;pointer-events:none!important;user-select:none;z-index:1;
+      background-repeat:no-repeat;background-position:center;background-size:contain;
+    }
+    html:not([data-whimsy="northpole"]) .cw-np-decor {display:none!important;}
+    html[data-whimsy="northpole"] .cw-np-decorated {position:relative;isolation:isolate;}
+    html[data-whimsy="northpole"] .cw-np-decor-garland {
+      top:3px;right:8px;width:155px;height:75px;background-image:${garland};
+    }
+    html[data-whimsy="northpole"] .cw-np-decor-presents {
+      right:12px;bottom:7px;width:104px;height:65px;background-image:${presents};opacity:.72;
+    }
+    html[data-whimsy="northpole"] .cw-np-decor-ornaments {
+      top:3px;right:10px;width:105px;height:80px;background-image:${ornaments};opacity:.85;
+    }
+    html[data-whimsy="northpole"] .cw-np-decor-holly {
+      bottom:7px;right:9px;width:67px;height:48px;background-image:${holly};opacity:.58;
+    }
+    html[data-whimsy="northpole"] .cw-np-decor-bells {
+      right:12px;bottom:8px;width:65px;height:50px;background-image:${bells};opacity:.65;
+    }
+    html[data-whimsy="northpole"] .cw-np-decorated > :not(.cw-np-decor) {
+      position:relative;z-index:2;
+    }
+    html[data-whimsy="northpole"] body[data-page="todo"] .list-card > .cw-np-decor {
+      top:auto!important;bottom:8px!important;right:8px!important;max-width:75px;max-height:55px;opacity:.48;
+    }
+    @media(max-width:650px) {
+      html[data-whimsy="northpole"] .cw-np-decor-garland {
+        width:83px;height:42px;right:5px;top:4px;
+      }
+      html[data-whimsy="northpole"] .cw-np-decor-presents {
+        width:57px;height:38px;right:6px;bottom:5px;opacity:.5;
+      }
+      html[data-whimsy="northpole"] .cw-np-decor-ornaments {
+        width:52px;height:43px;right:5px;top:4px;opacity:.65;
+      }
+      html[data-whimsy="northpole"] .cw-np-decor-holly,
+      html[data-whimsy="northpole"] .cw-np-decor-bells {
+        width:40px;height:33px;right:5px;bottom:5px;opacity:.4;
+      }
+      html[data-whimsy="northpole"] body[data-page="todo"] .list-card > .cw-np-decor {
+        max-width:40px;max-height:32px;opacity:.32;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  const cardRules=[
+    ['body[data-page="home"] .today-card','garland'],
+    ['body[data-page="home"] .overdue-card','presents'],
+    ['body[data-page="home"] .cw-f-card','ornaments'],
+    ['body[data-page="home"] .week-card','holly'],
+    ['body[data-page="todo"] .list-card','alternate'],
+    ['body[data-page="calendar"] .cal','bells'],
+    ['body[data-page="calendar"] .table-card','alternate'],
+    ['body[data-page="profile"] .profile-card','ornaments'],
+    ['body[data-page="profile"] .cw-profile-streak-card','bells'],
+    ['body[data-page="profile"] .card:not(.profile-card):not(.cw-profile-streak-card)','alternate'],
+    ['body[data-page="calendar"] .card:not(.cal):not(.table-card)','holly'],
+    ['body[data-page="admin"] .card','alternate']
+  ];
+  function decorate(){
+    if(document.documentElement.dataset.whimsy!=='northpole')return;
+    for(const [selector,type] of cardRules){
+      document.querySelectorAll(selector).forEach((card,index)=>{
+        let kind=type==='alternate'?['garland','presents','ornaments','holly'][index%4]:type;
+        if(document.body.dataset.page==='profile'){
+          const name=card.querySelector('h2,h3')?.textContent?.trim().toLowerCase()||'';
+          if(name.includes('canvas'))kind='presents';
+          if(name.includes('appearance'))kind='holly';
+          if(name.includes('streak'))kind='bells';
+        }
+        card.classList.add('cw-np-decorated');
+        let deco=Array.from(card.children).find(e=>e.classList.contains('cw-np-decor'));
+        if(!deco){deco=document.createElement('span');deco.setAttribute('aria-hidden','true');card.appendChild(deco);}
+        const desired=`cw-np-decor cw-np-decor-${kind}`;
+        if(deco.className!==desired)deco.className=desired;
+      });
+    }
+  }
+  let queued=false;
+  function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;decorate()})}
+  if(document.body)new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+  new MutationObserver(schedule).observe(document.documentElement,{attributes:true,attributeFilter:['data-whimsy']});
+  schedule();
+})();
+
+/* ===========================================
+   DECK THE DIVS — Progress-based elf
+   Reads actual Today Snapshot counts; never a fake counter.
+   =========================================== */
+(() => {
+  let scheduled=false;
+  function update(){
+    if(document.documentElement.dataset.whimsy!=='northpole')return;
+    const hero=document.querySelector('body[data-page="home"] .hero');
+    if(!hero)return;
+    const completed=Number((hero.querySelector('.hero-stat strong')?.textContent||'0').replace(/,/g,''))||0;
+    const headline=hero.querySelector('h2')?.textContent?.trim()||'';
+    const match=headline.match(/^(\d+)\s+(?:thing|things)\s+left today/i);
+    const remaining=match?Number(match[1]):/^(your day is clear|today is done)/i.test(headline)?0:null;
+    if(remaining===null)return;
+    const state=remaining===0?'done':completed===0?'planning':completed<=4?'wrapping':completed<=7?'stacking':'mountain';
+    if(hero.dataset.northPoleElf===state && hero.style.getPropertyValue('--cw-w-hero'))return;
+    hero.style.setProperty('--cw-w-hero',northPoleArtworkBridge(state));
+    hero.dataset.northPoleElf=state;
+  }
+  // A private bridging function is supplied by the main Whimsy module below.
+  function northPoleArtworkBridge(stage){
+    return window.CoursewiseNorthPoleArt ? window.CoursewiseNorthPoleArt(stage) : '';
+  }
+  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;update()})}
+  function init(){
+    const main=document.querySelector('#main');
+    if(main)new MutationObserver(schedule).observe(main,{childList:true,subtree:true,characterData:true});
+    new MutationObserver(schedule).observe(document.documentElement,{attributes:true,attributeFilter:['data-whimsy']});
+    schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
 })();
