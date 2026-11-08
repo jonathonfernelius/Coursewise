@@ -2427,3 +2427,97 @@ window.CoursewiseWhimsy = {
   `;
   document.head.appendChild(style);
 })();
+
+
+
+/* V5.6 — Mobile Whimsy Snapshot repairs */
+(() => {
+  if (document.getElementById("cw-whimsy-mobile-v56")) return;
+
+  const style = document.createElement("style");
+  style.id = "cw-whimsy-mobile-v56";
+
+  style.textContent = `
+    @media (max-width: 650px) {
+
+      /* Keep Snapshot content above decorations */
+      html[data-whimsy]:not([data-whimsy="off"]) .hero {
+        isolation: isolate;
+        min-height: 13rem;
+      }
+
+      /* Protect the label and text */
+      html[data-whimsy]:not([data-whimsy="off"]) .hero > small,
+      html[data-whimsy]:not([data-whimsy="off"]) .hero h2,
+      html[data-whimsy]:not([data-whimsy="off"]) .hero p {
+        position: relative;
+        z-index: 6 !important;
+      }
+
+      /* Keep the heading readable */
+      html[data-whimsy]:not([data-whimsy="off"]) .hero h2 {
+        font-size: clamp(1.35rem, 5.6vw, 1.6rem);
+        line-height: 1.2;
+      }
+
+      /* Give artwork and messages separate space */
+      html[data-whimsy]:not([data-whimsy="off"]) .hero p {
+        max-width: 64%;
+        font-size: .8rem;
+        line-height: 1.4;
+        overflow-wrap: break-word;
+      }
+
+      /* Keep completed-today counter visible */
+      html[data-whimsy]:not([data-whimsy="off"]) .hero .hero-stat {
+        position: absolute !important;
+        top: 18px !important;
+        right: 16px !important;
+        z-index: 8 !important;
+      }
+
+      /* Keep the streak anchored to the bottom */
+      html[data-whimsy]:not([data-whimsy="off"])
+      .hero.has-streak > .streak-bar {
+        position: absolute !important;
+        bottom: 0 !important;
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 7 !important;
+      }
+
+      /* Mission Control: remove problematic glow */
+      html[data-whimsy="space"] .hero {
+        background-image:
+          var(--cw-w-hero),
+          linear-gradient(120deg, #151c40, #383166)
+          !important;
+        background-size: auto 63%, cover !important;
+        background-position:
+          right bottom 31px, center !important;
+        background-repeat: no-repeat !important;
+      }
+
+      html[data-whimsy="space"] .hero > small {
+        color: #ffffff !important;
+        opacity: 1 !important;
+        text-shadow: 0 1px 4px #151c40;
+      }
+
+      /* Move crowded illustrations down and right */
+      html[data-whimsy="dinos"] .hero,
+      html[data-whimsy="faeries"] .hero,
+      html[data-whimsy="west"] .hero,
+      html[data-whimsy="sports"] .hero,
+      html[data-whimsy="cars"] .hero {
+        background-size: auto 56%, cover !important;
+        background-position:
+          right bottom 28px, center !important;
+        background-repeat: no-repeat !important;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+})();
