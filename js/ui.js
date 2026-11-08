@@ -40,9 +40,9 @@
     d.showModal(); return d;
   }
 
-  function taskRow(t, { edit = true, date = true, overdue = false, draggable = false } = {}) {
+  function taskRow(t, { edit = true, date = true, overdue = false, draggable = false, selectable = false } = {}) {
     const c = T.cat(t.categoryId);
-    return `<div class="task${t.done ? " done" : ""}${overdue ? " overdue" : ""}"${draggable ? ` data-task-id="${esc(t.id)}" draggable="true"` : ""}>
+    return `<div class="task${t.done ? " done" : ""}${overdue ? " overdue" : ""}"${draggable || selectable ? ` data-task-id="${esc(t.id)}"` : ""}${draggable ? ' draggable="true"' : ""}>
       ${draggable ? `<button type="button" class="task-drag" data-drag-task="${esc(t.id)}" aria-label="Reorder or move task ${esc(t.title)}" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight" title="Drag the task or use arrow keys">${icons.grip}</button>` : ""}
       <button class="check${t.done ? " on" : ""}" data-toggle="${t.id}" aria-label="${t.done ? "Mark incomplete" : "Mark complete"}: ${esc(t.title)}" aria-pressed="${t.done}">${t.done ? icons.check : ""}</button>
       <div class="task-body"><p class="task-title">${esc(t.title)}</p><div class="task-meta">

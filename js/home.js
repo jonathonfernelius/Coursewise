@@ -35,6 +35,8 @@
     return `<div class="streak-bar is-idle" role="status">${FLAME_SVG}<strong>No streak yet</strong><span class="streak-hint">Finish a task today to start one</span><span class="streak-spacer"></span>${best}</div>`;
   }
 
+  const WEEK_MODE_KEY = "coursewise-week-mode";
+  let weekMode = (() => { try { return localStorage.getItem(WEEK_MODE_KEY) === "course" ? "course" : "day"; } catch { return "day"; } })();
   let canvasStatus = null, statusRequested = false, reminderAnimated = false;
   let midnightTimer = null, renderedDay = null;
   const DISMISS_KEY = "cw-canvas-reminder-dismissed", DISMISS_DAYS = 7;
@@ -69,21 +71,56 @@
     const open = dueToday.filter(t => !t.done), doneN = dueToday.length - open.length;
     const overdue = all.filter(t => !t.done && t.due && t.due < today);
     const week = T.visibleTasks(all.filter(t => t.due && t.due >= today && t.due <= weekEnd));
+    const byTime = (x, y) => (x.time || "99:99").localeCompare(y.time || "99:99") || x.title.localeCompare(y.title);
     const weekDays = Array.from({ length: 7 }, (_, offset) => {
       const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
       const key = T.toKey(date);
-      const dayLabel = date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-      const fullDate = date.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-      const tasks = week.filter(task => task.due === key);
-      const countLabel = `${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} due`;
-      const taskList = tasks.length
-        ? `<ul class="week-day-list" aria-label="Tasks due ${T.esc(fullDate)}">${tasks.map(task => `<li>${U.taskRow(task, { edit: false, date: false })}</li>`).join("")}</ul>`
-        : `<p class="week-empty">No tasks</p>`;
-      return `<div class="week-day${offset === 0 ? " is-today" : ""}" role="group" aria-labelledby="week-day-${offset}">
-        <div class="week-day-heading"><h3 id="week-day-${offset}"><time datetime="${key}" aria-label="${T.esc(fullDate)}">${T.esc(dayLabel)}</time></h3>
-          <span class="count" aria-label="${countLabel}">${tasks.length}</span></div>
-        ${offset === 0 ? '<span class="week-day-today">Today</span>' : ""}
-        ${taskList}</div>`;
+      return {
+        offset, key, tasks: week.filter(task => task.due === key).sort(byTime),
+        short: offset === 0 ? "Today" : date.toLocaleDateString(undefined, { weekday: "short" }),
+        label: offset === 0 ? "Today" : offset === 1 ? "Tomorrow" : date.toLocaleDateString(undefined, { weekday: "long" }),
+        sub: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        full: date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+      };
+    });
+    const maxPerDay = Math.max(1, ...weekDays.map(d => d.tasks.length));
+    const busiest = weekDays.reduce((best, d) => d.tasks.length > best.tasks.length ? d : best, weekDays[0]);
+    const listName = task => T.state.lists.find(l => l.id === task.listId)?.title || "";
+    const weekRow = (task, { showList, showDay }) => {
+      const cat = T.cat(task.categoryId), day = weekDays.find(d => d.key === task.due);
+      const meta = [showList ? listName(task) : "", cat?.name || ""].filter(Boolean).map(T.esc).join(" · ");
+      const when = [showDay ? day?.short : "", task.time ? T.fmtTime(task.time) : ""].filter(Boolean).join(" · ");
+      return `<li class="week-row${task.done ? " done" : ""}">
+        <button type="button" class="check${task.done ? " on" : ""}" data-toggle="${T.esc(task.id)}" aria-label="${task.done ? "Mark incomplete" : "Mark complete"}: ${T.esc(task.title)}" aria-pressed="${task.done}">${task.done ? U.icons.check : ""}</button>
+        <span class="week-dot${cat ? ` t-${cat.tone}` : ""}" aria-hidden="true"></span>
+        <span class="week-row-main"><span class="week-row-title">${T.esc(task.title)}</span>${meta ? `<span class="week-row-meta">${meta}</span>` : ""}</span>
+        ${when ? `<span class="week-row-when">${T.esc(when)}</span>` : ""}</li>`;
+    };
+    function weekAgenda() {
+      if (!week.length) return `<p class="week-empty">Nothing due this week. Enjoy the breathing room.</p>`;
+      if (weekMode === "course") {
+        const groups = new Map();
+        for (const task of week.slice().sort((x, y) => (x.due || "").localeCompare(y.due || "") || byTime(x, y))) {
+          const name = listName(task) || "No list";
+          if (!groups.has(name)) groups.set(name, []);
+          groups.get(name).push(task);
+        }
+        const order = [...T.state.lists.map(l => l.title), "No list"];
+        return [...groups].sort((x, y) => order.indexOf(x[0]) - order.indexOf(y[0])).map(([name, tasks]) =>
+          `<section class="week-group" aria-label="${T.esc(name)}"><div class="week-group-label"><h3>${T.esc(name)}</h3><span>${tasks.length} due</span></div>
+            <ul class="week-rows">${tasks.map(task => weekRow(task, { showDay: true })).join("")}</ul></section>`).join("");
+      }
+      const free = weekDays.filter(d => !d.tasks.length).map(d => d.short);
+      return weekDays.filter(d => d.tasks.length).map(d =>
+        `<section class="week-group${d.offset === 0 ? " is-today" : ""}" id="week-group-${d.offset}" aria-label="${T.esc(d.full)}"><div class="week-group-label"><h3>${T.esc(d.label)}</h3><span>${T.esc(d.sub)}</span></div>
+          <ul class="week-rows">${d.tasks.map(task => weekRow(task, { showList: true })).join("")}</ul></section>`).join("")
+        + (free.length ? `<p class="week-free">Free: ${T.esc(free.join(", "))}</p>` : "");
+    }
+    const weekChart = weekDays.map(d => {
+      const n = d.tasks.length, label = `${d.full}: ${n} ${n === 1 ? "task" : "tasks"}`;
+      const inner = `<span class="week-bar-n">${n || ""}</span><span class="week-bar-fill" style="--r:${(n / maxPerDay).toFixed(3)}"></span><span class="week-bar-label">${T.esc(d.short)}</span>`;
+      return n ? `<button type="button" class="week-bar${d.offset === 0 ? " is-today" : ""}" data-week-day="${d.offset}" aria-label="${T.esc(label)}">${inner}</button>`
+               : `<div class="week-bar is-empty${d.offset === 0 ? " is-today" : ""}" role="img" aria-label="${T.esc(label)}">${inner}</div>`;
     }).join("");
     const date = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
@@ -100,7 +137,10 @@
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
           <div class="task-list${overdue.length ? " has-tasks" : ""}">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
         <section class="card week-card" aria-labelledby="week-heading"><div class="section-head"><h2 id="week-heading">This week</h2><span class="count" aria-label="${week.length} tasks due in the next seven days">${week.length}</span></div>
-          <div class="week-grid">${weekDays}</div></section>
+          <div class="week-top"><div class="week-stat"><strong>${week.length ? `${week.length} ${week.length === 1 ? "thing" : "things"} due` : "Nothing due"}</strong><span>${week.length ? `Busiest: ${T.esc(busiest.short)} (${busiest.tasks.length})` : "Your week is wide open."}</span></div>
+            <div class="week-chart" aria-label="Tasks due each day this week">${weekChart}</div></div>
+          ${week.length ? `<div class="week-seg" role="group" aria-label="Group this week by"><button type="button" data-week-mode="day" aria-pressed="${weekMode === "day"}">By day</button><button type="button" data-week-mode="course" aria-pressed="${weekMode === "course"}">By course</button></div>` : ""}
+          <div id="week-body">${weekAgenda()}</div></section>
         <div class="cw-f-home-column"><section class="card today-card"><div class="section-head"><h2>Today</h2><span class="count">${visibleToday.length}</span></div>
           <div class="task-list${visibleToday.length ? " has-tasks" : ""}">${rows(visibleToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
         ${window.CoursewiseFriends?.card() || ""}</div>
@@ -111,6 +151,21 @@
         if (!error && !data?.error && typeof data?.connected === "boolean") { canvasStatus = data.connected; render(); }
       }).catch(() => {});
     }
+    const setWeekMode = mode => {
+      weekMode = mode;
+      try { localStorage.setItem(WEEK_MODE_KEY, mode); } catch {}
+      document.getElementById("week-body").innerHTML = weekAgenda();
+      root.querySelectorAll("[data-week-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.weekMode === mode)));
+    };
+    root.querySelectorAll("[data-week-mode]").forEach(b => b.onclick = () => setWeekMode(b.dataset.weekMode));
+    root.querySelectorAll("[data-week-day]").forEach(b => b.onclick = () => {
+      if (weekMode !== "day") setWeekMode("day");
+      const group = document.getElementById(`week-group-${b.dataset.weekDay}`);
+      if (!group) return;
+      group.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "nearest" });
+      group.classList.add("is-pulse");
+      setTimeout(() => group.classList.remove("is-pulse"), 1200);
+    });
     const x = document.getElementById("cw-reminder-x");
     if (x) x.onclick = () => {
       try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}

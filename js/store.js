@@ -378,26 +378,6 @@
       const c=await result(db.from('Categories').insert({UserID:owner,DisplayName:name,DisplayColor:tone}).select('CategoryID').single());
       await refreshAfterSave(); return Tidy.cat(id(c.CategoryID));
     },
-    async updateTaskCategories(assignments) {
-      const known = new Set(state.tasks.map(task => task.id));
-      const groups = assignments.map(group => ({
-        categoryId: id(group.categoryId),
-        taskIds: [...new Set((group.taskIds || []).map(String))]
-      })).filter(group => group.categoryId && group.taskIds.length);
-      if (groups.some(group => !state.categories.some(category => category.id === group.categoryId))) {
-        throw new Error('The selected category no longer exists. Reload and try again.');
-      }
-      if (groups.some(group => group.taskIds.some(taskId => !known.has(taskId)))) {
-        throw new Error('Some imported tasks have changed. Reload and try again.');
-      }
-      await Promise.all(groups.map(group => result(db.from('Tasks')
-        .update({CategoryID:group.categoryId})
-        .in('TaskID',group.taskIds)
-        .eq('UserID',owner)
-        .select('TaskID'))));
-      if (groups.length) await refreshAfterSave();
-      return groups.reduce((count, group) => count + group.taskIds.length, 0);
-    },
     async updateCategory(n,p) { await write(db.from('Categories').update({DisplayName:p.name,DisplayColor:p.tone}).eq('CategoryID',n).eq('UserID',owner).select('CategoryID').single()); },
     async deleteCategory(n) { await write(db.rpc('tidy_delete_category',{p_id:n})); },
     async addTask(p) {

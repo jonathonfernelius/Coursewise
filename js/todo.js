@@ -2,9 +2,9 @@
 (() => {
   const T = Tidy, U = T.ui, root = document.getElementById("main");
   const collapsed = new Set(); let orderSaving = false, taskOrderSaving = false;
+  const selected = new Set(); let selecting = false, deletingSelection = false, completingSelection = false;
   const sortSettings = new Map();
   let sortSettingsOwner = null;
-  const selected = new Set(); let selecting = false, deletingSelection = false, completingSelection = false;
 
   const sortModes = [
     ["manual", "Manual"],
@@ -29,14 +29,9 @@
   }
   function sortFor(listId) { return sortSettings.get(listId) || { mode: "manual", direction: "asc" }; }
   function saveSortSettings() {
-    try {
-      localStorage.setItem(`cw-todo-sort-v1:${sortSettingsOwner || "default"}`, JSON.stringify(Object.fromEntries(sortSettings)));
-    } catch {}
+    try { localStorage.setItem(`cw-todo-sort-v1:${sortSettingsOwner || "default"}`, JSON.stringify(Object.fromEntries(sortSettings))); } catch {}
   }
-  function setSort(listId, value) {
-    sortSettings.set(listId, value);
-    saveSortSettings();
-  }
+  function setSort(listId, value) { sortSettings.set(listId, value); saveSortSettings(); }
   function sortedTasks(tasks, listId) {
     const { mode, direction } = sortFor(listId);
     if (mode === "manual") return tasks;
@@ -47,10 +42,7 @@
       if (mode === "title") { left = a.title; right = b.title; }
       else if (mode === "due") { left = a.due; right = b.due; }
       else if (mode === "created") { left = a.createdAt; right = b.createdAt; }
-      else {
-        left = T.cat(a.categoryId)?.name;
-        right = T.cat(b.categoryId)?.name;
-      }
+      else { left = T.cat(a.categoryId)?.name; right = T.cat(b.categoryId)?.name; }
       const leftMissing = left == null || left === "", rightMissing = right == null || right === "";
       if (leftMissing !== rightMissing) return leftMissing ? (direction === "asc" ? 1 : -1) : (direction === "asc" ? -1 : 1);
       if (leftMissing) return (a.sortOrder - b.sortOrder) || a.id.localeCompare(b.id);
@@ -59,6 +51,7 @@
         : compareText(left, right)) || (a.sortOrder - b.sortOrder) || a.id.localeCompare(b.id);
     });
   }
+
 
   function exitSelection() { selecting = false; selected.clear(); render(); }
   function toggleSelected(id) {
@@ -80,7 +73,7 @@
       const checked = selected.has(row.dataset.taskId);
       row.classList.toggle('bulk-selected', selecting && checked);
       row.classList.toggle('bulk-selectable', selecting);
-      row.setAttribute('draggable', String(!selecting));
+      row.setAttribute('draggable', String(!selecting && !!row.querySelector('[data-drag-task]')));
       row.querySelector('.bulk-checkbox')?.remove();
       if (selecting) {
         const indicator = document.createElement('span');
@@ -160,12 +153,25 @@
   }
 
 
+  function unassignedMarkup(S) {
+    const listIds = new Set(S.lists.map(list => String(list.id)));
+    const all = S.tasks.filter(task => task.listId == null || !listIds.has(String(task.listId)));
+    if (!all.length && S.lists.length) return "";
+    const items = all.filter(task => S.prefs.showDone || !task.done);
+    const open = !collapsed.has("__unassigned__");
+    return `<section class="card list-card" data-unassigned="true">
+      <div class="list-head"><button class="list-toggle" data-collapse="__unassigned__" aria-expanded="${open}">${U.icons.down}<h2>Unassigned</h2><span class="count">${items.length}</span></button></div>
+      ${open ? `<p class="muted" style="font-size:.8rem;margin:.2rem 0 .8rem">Tasks without a list. Use the pencil to organize them.</p>
+        <div class="task-list">${items.length ? items.map(task => U.taskRow(task, { selectable: true })).join("") : `<p class="empty">${all.length ? 'Only completed tasks are here. Turn on Show completed to see them.' : 'Tasks imported without a list will appear here.'}</p>`}</div>` : ""}
+    </section>`;
+  }
+
   function render() {
     const S = T.state;
     ensureSortSettings();
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>To-do</h1><p>Drag the grips to reorder lists and tasks or move tasks between lists.</p></div>
-        <div class="head-actions"><button class="btn btn-outline" id="new-list">${U.icons.plus} New list</button>
+        <div class="head-actions"><button class="btn btn-outline" type="button" id="show-completed" aria-pressed="${S.prefs.showDone}">${S.prefs.showDone ? 'Hide completed' : 'Show completed'}</button><button class="btn btn-outline" id="new-list">${U.icons.plus} New list</button>
         <button class="btn btn-outline" type="button" id="select-tasks" aria-pressed="${selecting}">${U.icons.check} ${selecting ? 'Done selecting' : 'Select tasks'}</button>
         <button class="btn btn-primary" id="add">${U.icons.plus} Add task</button></div></div>
       <div id="bulk-task-bar" class="bulk-task-bar" role="toolbar" aria-label="Selected task actions" ${selecting ? '' : 'hidden'}>
@@ -188,8 +194,13 @@
           <button class="icon-btn" data-rename="${l.id}" aria-label="Rename ${T.esc(l.title)}">${U.icons.pencil}</button>
           <button class="icon-btn danger" data-delete="${l.id}" aria-label="Delete ${T.esc(l.title)}">${U.icons.trash}</button></div>
           ${open ? `<div class="task-list" data-task-list="${T.esc(l.id)}">${items.length ? items.map(t => U.taskRow(t, { draggable: true })).join("") : '<p class="empty">No tasks in this list.</p>'}</div>` : ""}</section>`;
-      }).join("")}</div></div>`;
+      }).join("")}${unassignedMarkup(S)}</div></div>`;
 
+    root.querySelector('#show-completed').onclick = e => U.run(async () => {
+      await T.setPrefs({ showDone: !T.state.prefs.showDone });
+      selected.clear(); selecting = false;
+      render();
+    }, e.currentTarget);
     document.getElementById("add").onclick = () => U.taskDialog({ done: render });
     root.querySelector('#select-tasks').onclick = () => selecting ? exitSelection() : (selecting = true, render());
     root.querySelector('#bulk-cancel').onclick = exitSelection;
@@ -395,14 +406,11 @@
     if (key === "ArrowLeft" || key === "ArrowRight") {
       const nextListId = listIds[listIndex + (key === "ArrowLeft" ? -1 : 1)];
       if (!nextListId) return;
-      const nextVisible = visibleIdsForList(nextListId);
       const targetIds = withHiddenTasks(nextListId, [
-        ...nextVisible,
+        ...visibleIdsForList(nextListId),
         taskId
       ], taskId);
-      const sourceIds = withHiddenTasks(task.listId,
-        visibleIdsForList(task.listId).filter(id => id !== taskId),
-        taskId);
+      const sourceIds = withHiddenTasks(task.listId, visibleIdsForList(task.listId).filter(id => id !== taskId), taskId);
       setSort(task.listId, { mode: "manual", direction: "asc" });
       setSort(nextListId, { mode: "manual", direction: "asc" });
       persistTaskOrder(taskId, nextListId, targetIds, sourceIds, true);

@@ -47,18 +47,6 @@ tasks to be added at the bottom. Users can drag lists and tasks into a saved
 order, and move tasks between lists. Run both migrations to enable both
 features; the task-order migration can also be run independently.
 
-## Enabling recently-added task sorting
-Run `supabase/migrations/20261107000000_task_created_at.sql` once in the
-project's Supabase SQL Editor. This adds the creation timestamp used by the
-To-do page's "Recently added" sort. Tasks that existed before the migration
-receive the migration time because their original creation time was not stored;
-new tasks are timestamped automatically.
-
-Canvas imports can use an existing category with the same name as the course.
-If there is no match, the import preview offers to create that category when
-the student confirms the import. The To-do page's "Course / class" sort then
-sorts by category name.
-
 ## Applying the streaks migration
 1. Open the project's Supabase SQL Editor.
 2. Run `supabase/migrations/20261104000000_streaks.sql` once.
@@ -77,30 +65,78 @@ To verify that the account creation vertical slice is working:
 
 If the account remains accessible after refreshing, this demonstrates that the frontend successfully communicates with Supabase and that user account information persists.
 
-## Setting up Canvas AI suggestions
-The Canvas preview can request optional suggestions from the `canvas-ai-suggestions`
-Supabase Edge Function. The function sends only the event title, event type, and
-due date to Gemini. Past-due items are also flagged using their due date. Suggestions
-never change selections automatically; students must review them and confirm before
-importing. The preview reports when an AI review completes, including when it returns
-no suggestions, and explains when setup or a usage limit prevents a review.
+## Canvas import: guided review
+See **CANVAS-IMPORT-SETUP.md** for the current flow and installation steps.
 
-To configure the function:
-1. Create a Gemini API key in Google AI Studio using a project that remains on the Free Tier. Do not link a billing account if Gemini API charges must remain disabled.
-2. From the repository connected to the Coursewise Supabase project, store the key as a server-side secret and deploy the function:
+Canvas loads first, then the student chooses **Review with AI** or **Review manually**.
+Gemini is never called automatically on connection, page load, or a manual review.
+Both paths lead to one course-organized preview. Older items and calendar events
+start unselected, with AI suggestions applied only on the AI path. Everything is
+editable before import. Previously saved or manually changed selections are respected.
 
-   ```sh
-   supabase secrets set GEMINI_API_KEY=your-key GEMINI_MODEL=gemini-3.5-flash-lite
-   supabase functions deploy canvas-ai-suggestions
-   ```
+Existing course lists are matched by normalized names (for example IS401 and IS 401).
+If no match exists, the preview offers to create the course list. New lists are created
+only when the user confirms import, and only for courses with selected items. Categories
+are optional and are not required in this flow. Existing imported tasks are left alone,
+except for the pre-existing deadline sync when checking Canvas.
 
-3. Deploy the updated website.
+### Gemini setup (only if not already configured)
+Store GEMINI_API_KEY and your supported GEMINI_MODEL as Supabase Function secrets,
+then deploy supabase/functions/canvas-ai-suggestions/index.ts. Never put the key in
+browser JavaScript. Keep your project on your intended free plan; this update does
+not change billing settings. Project quotas still apply. Reviews send only titles,
+event types, due dates and batch indexes. The server also computes a past-due flag.
 
-The API key must stay in Supabase Function secrets; never put it in frontend
-JavaScript or commit it to the repository. Gemini free-tier limits can temporarily
-prevent requests, in which case the preview shows a limit message and manual
-Canvas review and import remain available. Google documents that free-tier
-requests have limited quotas and that submitted content may be used to improve
-Google products. See the [Gemini API billing](https://ai.google.dev/gemini-api/docs/billing)
-and [pricing](https://ai.google.dev/gemini-api/docs/pricing) pages before enabling
-the feature.
+AI requests run sequentially in groups of up to 80, with a brief pause between batches.
+Completed results are cached only while this page remains open; an explicit retry
+reviews unfinished items. A failed review does not block manual selection/import.
+
+## Profile streak updates
+The profile uses SVG flame/trophy animations with reduced-motion support and an info
+button instead of explanatory text under the cards. Personal-best persistence requires
+supabase/migrations/20261107010000_persistent_streak_best.sql in the SQL Editor.
+This is an earlier update, not a requirement added by the guided import UI.
+It seeds from remaining completion history; already-deleted history cannot be recovered.
+
+## Validation
+Guided import tests use a local calendar fixture with 125 items. They verify manual
+selection defaults, opt-in AI, batches and resume, existing-list matching, and creating
+lists only on confirmation. Frontend syntax checks pass. No live database writes or
+Gemini calls were performed. Browser visual verification was unavailable in this runtime.
+
+
+## To-do visibility fix
+Replace js/todo.js and js/ui.js, then commit/push the website. No Supabase changes.
+The To-do page now includes Unassigned for tasks with no list or an unavailable
+list, using the existing edit, delete, complete and bulk-selection actions. These
+rows do not expose drag grips; use the pencil to choose a list. The Show completed
+button controls the existing showDone preference. No tasks are reimported or changed
+by displaying the section.
+
+Checks passed for zero-list accounts, null/missing lists, completed visibility,
+edit/delete/bulk hooks, and unchanged named-list drag markup. JS syntax passed.
+Browser visual verification and live Supabase operations were not performed.
+
+
+## Compact Canvas screen and list placement
+Replace js/canvas-integration.js and js/todo.js; commit and push. No Supabase changes.
+Unassigned appears after named lists. Canvas hides its check button during loading,
+AI review and importing so only the activity card shows progress. The review-choice
+screen uses a short item count, two buttons and a collapsed About AI review disclosure.
+Syntax, import-flow and unassigned-task rendering regression checks passed.
+
+
+## Task sorting
+
+Each To-do list can be sorted manually, alphabetically, by due date, by recently
+added, or by category. Use the arrow button to reverse a sort. Preferences are
+saved in this browser for each account. Dragging or keyboard-reordering tasks
+returns that list to Manual order.
+
+To enable the Recently added sort on an existing Supabase project, run
+`supabase/migrations/20261107000000_task_created_at.sql` once in the SQL Editor,
+then deploy the updated site. Tasks already in the database receive the time
+the migration runs because their original creation time was not recorded.
+
+Canvas import also suggests a category matching the course name. If there is no
+match, the review lets you create that category when you confirm the import.

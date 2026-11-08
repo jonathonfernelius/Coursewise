@@ -34,11 +34,23 @@
     const S = T.state, u = S.user, ws = S.prefs.weekStart;
     if (!window.CoursewisePhotos.hasPhoto) photoOpen = false;
     const streak = S.streak;
+    const flame = `<svg class="cw-streak-flame" viewBox="0 0 24 28" aria-hidden="true"><path class="cw-streak-flame-outer" d="M12 1c1.2 4.6 7.5 7.4 7.5 14.2A7.5 7.5 0 0 1 12 27a7.5 7.5 0 0 1-7.5-11.8c0 2.3 1.4 3.9 3 4.3C6.8 14 9 5.5 12 1z"/><path class="cw-streak-flame-inner" d="M12 12c.7 2.6 3.7 4 3.7 7.3a3.7 3.7 0 0 1-7.4 0c0-1.7.9-2.7 1.7-3.2.2 1 .8 1.6 1.4 1.7C11 16.3 11.4 14 12 12z"/></svg>`;
+    const trophy = `<svg class="cw-streak-trophy" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6h12v7a6 6 0 0 1-12 0V6Z"/><path d="M10 9H6v3a5 5 0 0 0 5 5m11-8h4v3a5 5 0 0 1-5 5M16 19v6m-5 2h10m-8-2h6"/><path class="cw-trophy-glint" d="M16 9v5m-2.5-2.5h5"/></svg>`;
+    const current = Math.max(0, Number(streak?.current) || 0);
+    const longest = Math.max(0, Number(streak?.longest) || 0);
     const streakMarkup = streak ? `<div class="cw-profile-streak-grid">
-      <div class="cw-profile-streak-stat"><span class="cw-profile-streak-icon" aria-hidden="true">🔥</span><strong>${streak.current}</strong><span>Current streak</span></div>
-      <div class="cw-profile-streak-stat"><span class="cw-profile-streak-icon" aria-hidden="true">🏆</span><strong>${streak.longest}</strong><span>Best streak</span></div>
-    </div><p class="cw-profile-streak-message">${streak.doneToday ? 'You did it today! Keep the momentum going.' : streak.current ? 'Complete one task today to keep your streak going.' : 'Complete a task to start your streak.'}</p>`
-      : `<p class="muted cw-profile-streak-loading">Streaks are unavailable right now. Check that the streaks migration is installed.</p>`;
+      <div class="cw-profile-streak-stat cw-streak-current ${current ? 'is-active' : 'is-idle'}">
+        <span class="cw-profile-streak-art" aria-hidden="true">${flame}</span>
+        <span class="cw-profile-streak-label">Current streak</span>
+        <div class="cw-profile-streak-value"><strong>${current}</strong><span>${current === 1 ? 'day' : 'days'}</span></div>
+      </div>
+      <div class="cw-profile-streak-stat cw-streak-best ${longest ? 'has-record' : ''}">
+        <span class="cw-profile-streak-art" aria-hidden="true">${trophy}</span>
+        <span class="cw-profile-streak-label">Personal best</span>
+        <div class="cw-profile-streak-value"><strong>${longest}</strong><span>${longest === 1 ? 'day' : 'days'}</span></div>
+      </div>
+    </div>`
+      : `<p class="muted cw-profile-streak-loading">Your streaks couldn’t load right now. Try refreshing in a moment.</p>`;
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>Profile</h1><p>Your account, preferences, categories and Canvas connection.</p></div>
         <div class="head-actions"><button class="btn btn-outline" id="logout">Log out</button></div></div>
@@ -58,10 +70,8 @@
           <section class="card" id="canvas"><div class="section-head"><h2>Canvas</h2></div>
             <p class="muted">Not connected. Canvas assignment import is coming later.</p></section>
           <section class="card cw-profile-streak-card" aria-label="Your streaks">
-            <div class="section-head"><h2>Your streaks</h2><span class="cw-profile-streak-heading-icon" aria-hidden="true">✦</span></div>
-            <p class="muted cw-profile-streak-subtitle">A little progress every day adds up.</p>
+            <div class="section-head"><h2>Your streaks</h2><details class="cw-streak-info"><summary aria-label="About streaks"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v2"/></svg></summary><div class="cw-streak-info-copy">Complete a task on consecutive days to build a streak. Days follow Mountain Time. Personal best keeps your highest recorded streak, even after you delete completed tasks. Current streak uses your remaining completion history.</div></details></div>
             ${streakMarkup}
-            <p class="cw-profile-streak-footnote">Complete at least one task a day to build your streak.</p>
           </section>
 
         </div>
