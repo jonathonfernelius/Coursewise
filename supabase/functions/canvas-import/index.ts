@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { validFeed } from "../_shared/canvas-feed.ts";
 
 const headers = {
   "Content-Type": "application/json",
@@ -13,20 +14,6 @@ function reply(body: unknown, status = 200) {
     status,
     headers
   });
-}
-
-function validFeed(input: string) {
-  const url = new URL(input);
-  if (
-    url.protocol !== "https:" ||
-    url.hostname !== "byu.instructure.com" ||
-    url.port || url.username || url.password ||
-    url.hash ||
-    !/^\/feeds\/calendars\/[^/]+\.ics$/i.test(url.pathname)
-  ) {
-    throw new Error("Invalid Canvas feed address.");
-  }
-  return url.href;
 }
 
 async function readFeed(url: string) {
@@ -273,7 +260,7 @@ Deno.serve(async req => {
       }
     }
 
-    const raw = await readFeed(validFeed(connection.FeedURL));
+    const raw = await readFeed(await validFeed(connection.FeedURL));
     const events = parseEvents(raw);
 
     const { data: existing, error: mappingError } = await db

@@ -1396,7 +1396,9 @@
               spellcheck="false"
             >
             <small>
-              In Canvas, select Calendar → Calendar Feed.
+              In Canvas, select Calendar → Calendar Feed and copy the
+              address ending in .ics. Works with any school’s Canvas,
+              including ones that use their own web address.
               Keep your URL private.
             </small>
           </div>
