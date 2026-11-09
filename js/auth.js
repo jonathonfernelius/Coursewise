@@ -4,6 +4,21 @@
   const status=document.createElement('p'); status.className='auth-status'; status.setAttribute('role','status'); form.append(status);
   const submit=form.querySelector('button[type=submit],button.btn-primary');
   const message=(text,error=false)=>{status.textContent=text;status.classList.toggle('error',error);};
+  if (page==='signup') {
+    const credentials=[
+      {input:document.getElementById('u'),error:'Spaces are not allowed in the username.'},
+      {input:document.getElementById('p1'),error:'Spaces are not allowed in the password.'},
+      {input:document.getElementById('p2'),error:'Spaces are not allowed in the password.'}
+    ];
+    const validateCredentials=()=>{
+      const invalid=credentials.find(({input})=>/\s/.test(input.value));
+      credentials.forEach(({input,error})=>input.setCustomValidity(/\s/.test(input.value)?error:''));
+      if (invalid) message(invalid.error,true);
+      else if (credentials.some(({error})=>status.textContent===error)) message('');
+    };
+    credentials.forEach(({input})=>input.addEventListener('input',validateCredentials));
+    validateCredentials();
+  }
   async function run(fn) {
     submit.disabled=true; message('');
     try { await fn(); } catch(e) {message(e.message || 'Something went wrong. Please try again.',true);}

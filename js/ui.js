@@ -361,6 +361,160 @@
     };
   }
 
+  function eventDeletionDialog({ event, done }) {
+    const d = modal(`<form class="dialog-body"><h2>Delete event?</h2>
+      <p>Delete “${esc(event.title)}”?</p>
+      <div class="dialog-actions"><button type="button" class="btn btn-outline" data-close>Cancel</button><button class="btn btn-danger">${icons.trash} Delete event</button></div></form>`);
+    d.querySelector("form").onsubmit = e => { e.preventDefault(); run(async () => {
+      await T.deleteEvent(event.id); d.close(); toast("Event deleted"); done();
+    }, e.submitter); };
+  }
+
+  function eventTimePickerMarkup(prefix, label, value) {
+    return `<div class="field"><span class="field-label" id="${prefix}-label">${label}</span>
+      <div class="cw-time-wrap" id="${prefix}-wrap">
+        <input id="${prefix}-value" type="hidden" value="${esc(value || "")}">
+        <button type="button" id="${prefix}-trigger" class="cw-time-trigger is-empty" aria-haspopup="dialog" aria-expanded="false" aria-controls="${prefix}-panel" aria-labelledby="${prefix}-label ${prefix}-display">
+          <span class="cw-time-leading">${icons.clock}</span><span id="${prefix}-display">Set a time</span><span class="cw-time-chevron">${icons.down}</span></button>
+        <div class="cw-time-panel" id="${prefix}-panel" role="group" aria-label="Choose ${label.toLowerCase()}" hidden>
+          <div class="cw-time-entry">
+            <select id="${prefix}-hour" aria-label="Hour">${T.timeFormat() === "24" ? Array.from({length:24},(_,i)=>`<option value="${String(i).padStart(2,"0")}">${String(i).padStart(2,"0")}</option>`).join("") : Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("")}</select>
+            <span class="cw-time-divider">:</span>
+            <select id="${prefix}-minute" aria-label="Minute">${Array.from({length:60},(_,i)=>`<option value="${String(i).padStart(2,"0")}">${String(i).padStart(2,"0")}</option>`).join("")}</select>
+            ${T.timeFormat() === "24" ? "" : `<select id="${prefix}-period" aria-label="AM or PM"><option value="AM">AM</option><option value="PM">PM</option></select>`}
+          </div><div class="cw-time-footer"><button type="button" id="${prefix}-clear">Clear</button><button type="button" id="${prefix}-apply">Done</button></div>
+        </div>
+      </div></div>`;
+  }
+
+  function eventDialog({ event, date, done }) {
+    const initialDate = event?.date || date || T.toKey(new Date());
+    let repeatVal = event?.repeat || null;
+    const repeatOptions = () => {
+      const current = repeatVal && typeof repeatVal === "object" ? repeatVal : null;
+      return options([["", "Does not repeat"], ...Object.entries(T.repeats),
+        ...(current ? [["__cur", T.repeatLabel(current)]] : []), ["__custom", "Custom…"]], current ? "__cur" : repeatVal || "");
+    };
+    const d = modal(`<form class="dialog-body">
+      <h2>${event ? "Edit event" : "Add event"}</h2>
+      <div class="field"><label for="e-title">Event</label><input id="e-title" required maxlength="200" value="${esc(event?.title)}" placeholder="What is happening?"></div>
+      <div class="field"><span class="field-label" id="e-cat-label">Category</span>${categoryPickerMarkup(event?.categoryId || "").replaceAll("f-cat", "e-cat")}</div>
+      <div class="field"><label for="e-date">Date</label><input id="e-date" type="date" required value="${esc(initialDate)}"></div>
+      <div class="grid-2">
+        ${eventTimePickerMarkup("e-start-time", "Start time (optional)", event?.time)}
+        ${eventTimePickerMarkup("e-end-time", "End time (optional)", event?.endTime)}
+      </div>
+      <div class="field"><label for="e-repeat">Repeat</label><select id="e-repeat">${repeatOptions()}</select>
+        <small class="hint${repeatVal && (typeof repeatVal !== "object" || !repeatVal.end || repeatVal.end.type === "never") ? "" : " hide"}" id="e-repeat-hint">This event appears on each matching date.</small></div>
+      <div class="switch-row"><div><strong>Notifications</strong><small>Coming soon. Notifications are not enabled yet.</small></div>
+        <span class="switch"><input type="checkbox" disabled aria-label="Notifications coming soon"><span></span></span></div>
+      <div class="dialog-actions"><button class="btn btn-primary">${event ? "Update event" : "Save event"}</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
+      ${event ? `<button type="button" class="delete-link" id="e-del">${icons.trash} Delete event</button>` : ""}</form>`);
+    const q = selector => d.querySelector("#" + selector);
+    const renderCategoryPicker = selected => { q("e-cat-picker").outerHTML = categoryPickerMarkup(selected).replaceAll("f-cat", "e-cat"); };
+    const closeCategoryMenu = returnFocus => {
+      const menu = q("e-cat-menu");
+      if (!menu || menu.hidden) return;
+      menu.hidden = true; q("e-cat-trigger").setAttribute("aria-expanded", "false");
+      if (returnFocus) q("e-cat-trigger").focus();
+    };
+    d.addEventListener("click", e => {
+      const trigger = e.target.closest("#e-cat-trigger"), choice = e.target.closest("[data-category-choice]"),
+        deleteButton = e.target.closest("[data-delete-category]"), addCategory = e.target.closest("[data-new-category]");
+      if (trigger) {
+        const menu = q("e-cat-menu"), open = menu.hidden;
+        menu.hidden = !open; trigger.setAttribute("aria-expanded", String(open));
+        if (open) menu.querySelector('[aria-checked="true"]')?.focus();
+      } else if (choice) {
+        renderCategoryPicker(choice.dataset.categoryChoice);
+        q("e-cat-trigger").focus();
+      } else if (deleteButton) {
+        const cat = T.cat(deleteButton.dataset.deleteCategory);
+        if (cat) categoryDeleteDialog({ cat, done: () => {
+          const selected = q("e-cat").value === cat.id ? "" : q("e-cat").value;
+          renderCategoryPicker(selected);
+        } });
+      } else if (addCategory) {
+        closeCategoryMenu();
+        categoryDialog({ done: cat => { if (cat) renderCategoryPicker(cat.id); } });
+      } else if (!e.target.closest("#e-cat-picker")) closeCategoryMenu();
+    });
+    d.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !q("e-cat-menu").hidden) {
+        e.preventDefault(); e.stopPropagation(); closeCategoryMenu(true);
+      }
+    });
+    const military = T.timeFormat() === "24";
+    const timePickers = [];
+    ["e-start-time", "e-end-time"].forEach(prefix => {
+      const input = q(`${prefix}-value`), wrap = q(`${prefix}-wrap`), panel = q(`${prefix}-panel`),
+        trigger = q(`${prefix}-trigger`), display = q(`${prefix}-display`), hour = q(`${prefix}-hour`),
+        minute = q(`${prefix}-minute`), period = q(`${prefix}-period`);
+      const setFields = value => {
+        const match = /^(\d{2}):(\d{2})$/.exec(value || ""), valid = match && +match[1] < 24 && +match[2] < 60;
+        hour.value = military ? (valid ? match[1] : "09") : (valid ? String(+match[1] % 12 || 12) : "9");
+        minute.value = valid ? match[2] : "00";
+        if (period) period.value = valid && +match[1] >= 12 ? "PM" : "AM";
+      };
+      const sync = () => {
+        const match = /^(\d{2}):(\d{2})$/.exec(input.value || ""), valid = match && +match[1] < 24 && +match[2] < 60;
+        display.textContent = valid ? T.fmtTime(input.value) : "Set a time";
+        trigger.classList.toggle("is-empty", !input.value);
+      };
+      const close = (restoreFocus = false) => {
+        if (panel.hidden) return;
+        panel.hidden = true; wrap.classList.remove("is-open"); trigger.setAttribute("aria-expanded", "false");
+        if (restoreFocus) trigger.focus();
+      };
+      const apply = () => {
+        const h = Number(hour.value), m = Number(minute.value), h24 = military ? h : (h % 12) + (period.value === "PM" ? 12 : 0);
+        input.value = `${String(h24).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+        sync(); close(true);
+      };
+      setFields(input.value); sync();
+      trigger.onclick = () => {
+        if (!panel.hidden) { close(true); return; }
+        timePickers.forEach(picker => picker.close());
+        setFields(input.value); panel.hidden = false; wrap.classList.add("is-open");
+        trigger.setAttribute("aria-expanded", "true"); hour.focus();
+      };
+      q(`${prefix}-apply`).onclick = apply;
+      q(`${prefix}-clear`).onclick = () => { input.value = ""; sync(); close(true); };
+      panel.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); apply(); } });
+      d.addEventListener("click", e => { if (!wrap.contains(e.target)) close(); });
+      d.addEventListener("keydown", e => {
+        if (e.key === "Escape" && !panel.hidden) { e.preventDefault(); e.stopPropagation(); close(true); }
+      });
+      timePickers.push({ input, close });
+    });
+    let previousRepeat = q("e-repeat").value;
+    q("e-repeat").onchange = e => {
+      const value = e.target.value;
+      if (value === "__custom") {
+        recurrenceDialog({
+          rule: repeatVal && typeof repeatVal === "object" ? repeatVal : null, due: q("e-date").value,
+          done: rule => { repeatVal = rule; q("e-repeat").innerHTML = repeatOptions(); previousRepeat = q("e-repeat").value; },
+          cancel: () => { q("e-repeat").value = previousRepeat; }
+        });
+        return;
+      }
+      if (value !== "__cur") repeatVal = value || null;
+      previousRepeat = q("e-repeat").value;
+      q("e-repeat-hint").classList.toggle("hide", !repeatVal ||
+        (typeof repeatVal === "object" && repeatVal.end && repeatVal.end.type !== "never"));
+    };
+    d.querySelector("form").onsubmit = e => { e.preventDefault(); run(async () => {
+      const p = { title: d.querySelector("#e-title").value.trim(), categoryId: q("e-cat").value || null,
+        date: d.querySelector("#e-date").value, time: q("e-start-time-value").value || null,
+        endTime: q("e-end-time-value").value || null, repeat: repeatVal };
+      if (!p.title || !p.date) return;
+      if (p.endTime && (!p.time || p.endTime <= p.time)) throw new Error("End time must be after the start time.");
+      await (event ? T.updateEvent(event.id, p) : T.addEvent(p));
+      d.close(); toast(event ? "Event updated" : "Event added"); done();
+    }, e.submitter); };
+    if (event) d.querySelector("#e-del").onclick = () => eventDeletionDialog({ event, done: () => { d.close(); done(); } });
+  }
+
   async function toggle(id) {
     const r = await T.toggleTask(id);
     if (r.next) toast(`Done. The next one is due ${T.fmtDate(r.next)}.`);
@@ -547,5 +701,5 @@
     void checkCanvasOnSessionStart(rerender);
   }
 
-  window.Tidy.ui = { run, icons, toast, modal, taskRow, taskDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
+  window.Tidy.ui = { run, icons, toast, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
 })();

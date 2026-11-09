@@ -46,6 +46,42 @@
     do d = stepDate(d, rule, anchor); while (toKey(d) <= today);
     return toKey(d);
   }
+  function eventOccurrences(event, fromKey, endKey) {
+    const rule = asRule(event.repeat), start = parseKey(event.date);
+    start.setHours(12, 0, 0, 0);
+    if (!rule) return event.date >= fromKey && event.date <= endKey ? [{ ...event }] : [];
+
+    const interval = Math.max(1, Number(rule.interval) || 1), anchor = start.getDate();
+    if (rule.unit === 'week' && rule.days?.length && !rule.days.includes(start.getDay())) {
+      start.setTime(stepDate(start, rule, anchor).getTime());
+    }
+    const end = rule.end || { type: 'never' };
+    const count = end.type === 'after' ? Math.max(1, Number(end.count) || 1) : Infinity;
+    const occurrences = [];
+    let date = start, position = 0;
+
+    if (rule.unit === 'day' && fromKey > event.date) {
+      const dayNumber = key => {
+        const [year, month, day] = key.split('-').map(Number);
+        return Date.UTC(year, month - 1, day) / 86400000;
+      };
+      position = Math.max(0, Math.ceil((dayNumber(fromKey) - dayNumber(event.date)) / interval));
+      date = new Date(start);
+      date.setDate(date.getDate() + position * interval);
+    } else {
+      while (toKey(date) < fromKey && position < count && (!end.date || toKey(date) <= end.date)) {
+        date = stepDate(date, rule, anchor);
+        position++;
+      }
+    }
+
+    while (position < count && toKey(date) <= endKey && (!end.date || toKey(date) <= end.date)) {
+      if (toKey(date) >= fromKey) occurrences.push({ ...event, date: toKey(date) });
+      date = stepDate(date, rule, anchor);
+      position++;
+    }
+    return occurrences;
+  }
   function weeklyTasks(task) {
     const rule = asRule(task.repeat);
     const days = rule?.unit === "week" && rule.days?.length > 1
@@ -212,11 +248,16 @@
 
   const db = window.tidyClient;
   const tones = ["sky", "grape", "sun", "mint", "rose", "slate", "teal", "coral", "indigo", "lime"];
-  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], canvasConnected: false, completedToday: 0, streak: null });
+  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], events: [], canvasConnected: false, completedToday: 0, streak: null });
   let state = empty(), authUser, owner;
   const requireDb = () => { if (!db) throw new Error('Could not load Supabase. Check your connection and reload.'); };
   async function result(query) { const {data, error} = await query; if (error) throw new Error(error.message); return data; }
   const id = n => n == null ? null : String(n);
+  function validateEventTimes(p) {
+    const validTime = value => !value || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+    if (!validTime(p.time) || !validTime(p.endTime)) throw new Error('Enter a valid event time.');
+    if (p.endTime && (!p.time || p.endTime <= p.time)) throw new Error('End time must be after the start time.');
+  }
   function parseRepeat(r) {
     if (!r) return null;
     let v; try { v = JSON.parse(r); } catch { v = r; }
@@ -273,12 +314,16 @@
   async function load() {
     if (!owner) throw new Error('Please log in again.');
     // Keep the prior screen intact if any request fails.
-    const [profile, settings, categories, lists, tasks, streak] = await Promise.all([
+    const [profile, settings, categories, lists, tasks, events, streak] = await Promise.all([
       result(db.from('User').select('UserID,FirstName,LastName,Username').eq('UserID', owner).single()),
       loadSettings(),
       allRows('Categories','CategoryID,DisplayName,DisplayColor','CategoryID'),
       allRows('Lists','ListID,Title,SortOrder','SortOrder'),
       allRows('Tasks','*','TaskID'),
+      document.body.dataset.page === 'calendar'
+        ? result(db.from('coursewise_calendar_events').select('id,title,event_date,event_time,end_time,category_id,repeat_rule')
+          .eq('auth_user_id', authUser.id).order('event_date').order('event_time'))
+        : Promise.resolve([]),
       // Streaks are a bonus: if the migration is not applied yet, the rest of the app still loads.
       Promise.resolve(db.rpc('coursewise_my_streak')).then(r => r.error ? null : r.data, () => null)
     ]);
@@ -294,6 +339,10 @@
         .filter(task => !task.CanvasExcluded)
         .map(taskFromRow)
         .sort((a,b) => a.sortOrder-b.sortOrder || a.id.localeCompare(b.id)),
+      events: events.map(event => ({ id: event.id, title: event.title, date: event.event_date,
+        time: event.event_time?.slice(0, 5) || null, endTime: event.end_time?.slice(0, 5) || null,
+        categoryId: id(event.category_id), repeat: parseRepeat(event.repeat_rule) }))
+        .sort((a,b) => a.date.localeCompare(b.date) || (a.time || '99:99').localeCompare(b.time || '99:99') || a.title.localeCompare(b.title)),
       canvasConnected: false,
       completedToday: Number(streak?.completed_today) || 0,
       streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null };
@@ -324,7 +373,7 @@
   }
   async function write(query) { await result(query); await refreshAfterSave(); }
   const Tidy = {
-    toKey, shift, parseKey, fmtDate, fmtTime, timeFormat: () => timeFormat, esc, tones, themes: THEMES, repeats: REPEATS, repeatLabel, dayNames: DAYN,
+    toKey, shift, parseKey, fmtDate, fmtTime, timeFormat: () => timeFormat, esc, tones, themes: THEMES, repeats: REPEATS, repeatLabel, dayNames: DAYN, eventOccurrences,
     get categories() { return state.categories; }, get state() { return state; },
     // One saved preference controls completed-task visibility on every page.
     visibleTasks: (tasks = state.tasks) =>
@@ -384,6 +433,27 @@
       const {tasks,truncated}=recurrenceTasks(p), sortOrder=Math.max(-1,...state.tasks.filter(t=>t.listId===p.listId).map(t=>t.sortOrder))+1;
       await write(db.from('Tasks').insert(tasks.map((task,index)=>({...taskToRow(task),SortOrder:sortOrder+index,UserID:owner,IsComplete:false,IsAssignment:false}))));
       return {truncated};
+    },
+    async addEvent(p) {
+      validateEventTimes(p);
+      if (p.categoryId && !Tidy.cat(p.categoryId)) throw new Error('That category is no longer available. Reload the page and try again.');
+      await write(db.from('coursewise_calendar_events').insert({
+        auth_user_id: authUser.id, title: p.title, event_date: p.date,
+        event_time: p.time || null, end_time: p.endTime || null, category_id: p.categoryId || null,
+        repeat_rule: p.repeat ? (typeof p.repeat === 'string' ? PRESETS[p.repeat] : p.repeat) : null
+      }));
+    },
+    async updateEvent(n,p) {
+      validateEventTimes(p);
+      if (p.categoryId && !Tidy.cat(p.categoryId)) throw new Error('That category is no longer available. Reload the page and try again.');
+      await write(db.from('coursewise_calendar_events').update({
+        title: p.title, event_date: p.date, event_time: p.time || null, end_time: p.endTime || null,
+        category_id: p.categoryId || null,
+        repeat_rule: p.repeat ? (typeof p.repeat === 'string' ? PRESETS[p.repeat] : p.repeat) : null
+      }).eq('id',n).eq('auth_user_id',authUser.id).select('id').single());
+    },
+    async deleteEvent(n) {
+      await write(db.from('coursewise_calendar_events').delete().eq('id',n).eq('auth_user_id',authUser.id).select('id').single());
     },
     async updateTask(n,p) {
       const existing=state.tasks.find(t=>t.id===n), sameRepeat=!!existing&&existing.due===p.due&&JSON.stringify(existing.repeat)===JSON.stringify(p.repeat);

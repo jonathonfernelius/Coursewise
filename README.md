@@ -35,6 +35,24 @@ Students often struggle to manage assignments and deadlines across multiple cour
 20. The task is now created and can be viewed in the today / to-do / calendar pages.
 21. Mark the task off as complete when finished.
 
+## Calendar events
+Use **Add event** on the Calendar page to add a dated event with an optional
+start and end time and category. Events appear on the calendar and in that day's details, but are
+stored separately from tasks and never appear in task lists. The calendar also
+shows an **Upcoming events** box below the task lists with events for today and
+the next six days, up to 25 at a time. The event form has a reserved notifications control;
+notifications are not enabled yet.
+
+Before deploying this feature, run
+`supabase/migrations/20261109000000_calendar_events.sql` once in the Supabase SQL
+Editor. If that table was already created, also run
+`supabase/migrations/20261109010000_calendar_event_recurrence.sql` to add the
+recurrence rule and
+`supabase/migrations/20261109020000_calendar_event_end_time.sql` to add end times.
+Events can repeat daily, on weekdays, weekly, monthly, or on a custom schedule
+with an optional end condition. An end time requires a start time and must be
+later than it.
+
 ## Applying the list-ordering migration
 To enable persistent list ordering on an existing Supabase project:
 1. Open the project's Supabase SQL Editor.

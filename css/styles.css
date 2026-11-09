@@ -523,7 +523,7 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 .field .cw-time-trigger{width:100%;min-height:2.6rem;display:flex;align-items:center;gap:.65rem;text-align:left;padding:.55rem .8rem;border:1px solid var(--border);border-radius:.8rem;background:var(--card);color:var(--fg);font:inherit;font-size:.93rem;cursor:pointer;transition:border-color .16s,background .16s}
 .field .cw-time-trigger:hover{border-color:var(--primary)}
 .field .cw-time-trigger:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
-.cw-time-trigger.is-empty #f-time-value{color:var(--muted-fg)}
+.cw-time-trigger.is-empty [id$="-time-value"],.cw-time-trigger.is-empty [id$="-time-display"]{color:var(--muted-fg)}
 .cw-time-leading,.cw-time-chevron{display:grid;place-items:center;color:var(--primary);flex-shrink:0}
 .cw-time-leading svg{width:1.12rem;height:1.12rem}
 .cw-time-chevron{margin-left:auto;color:var(--muted-fg)}
@@ -533,15 +533,15 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 .cw-time-panel{box-sizing:border-box;position:absolute;right:0;top:calc(100% + .35rem);z-index:80;width:100%;min-width:0;padding:.65rem;background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:.8rem;box-shadow:0 12px 26px #0000001b}
 .cw-time-entry{display:flex;align-items:center;gap:.22rem;width:100%;min-width:0}
 .field .cw-time-entry select{box-sizing:border-box;min-width:0;flex:1 1 0;width:0;min-height:2.15rem;padding:.25rem .15rem;background:var(--secondary);border:1px solid transparent;border-radius:.45rem;color:var(--fg);font:inherit;font-size:.82rem;font-weight:400;text-align:center;text-align-last:center;cursor:pointer;box-shadow:none}
-.field .cw-time-entry #f-time-period{flex:1.35 1 0}
+.field .cw-time-entry [id$="-time-period"]{flex:1.35 1 0}
 .field .cw-time-entry select:focus-visible{outline:2px solid var(--ring);outline-offset:0}
 .cw-time-divider{flex:none;font-size:.95rem;color:var(--muted-fg);font-weight:500}
 .cw-time-footer{display:flex;justify-content:space-between;gap:.35rem;align-items:center;margin-top:.5rem}
 .cw-time-footer button{font:inherit;font-size:.75rem;font-weight:650;min-height:1.8rem;border:0;border-radius:.45rem;padding:.25rem .6rem;cursor:pointer}
-#f-time-clear{background:transparent;color:var(--muted-fg)}
-#f-time-clear:hover{background:var(--secondary);color:var(--fg)}
-#f-time-apply{background:var(--primary);color:var(--primary-fg)}
-#f-time-apply:hover{background:var(--primary-dark)}
+[id$="-time-clear"]{background:transparent;color:var(--muted-fg)}
+[id$="-time-clear"]:hover{background:var(--secondary);color:var(--fg)}
+[id$="-time-apply"]{background:var(--primary);color:var(--primary-fg)}
+[id$="-time-apply"]:hover{background:var(--primary-dark)}
 
 
 /* To-do: bulk task selection — persistent floating action bar */

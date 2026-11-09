@@ -1,0 +1,16 @@
+.dots i.calendar-event-dot { border-radius: 1px; transform: rotate(45deg); }
+.calendar-event { display: flex; align-items: center; gap: .75rem; min-width: 0; padding: .7rem .75rem; border: 1px solid var(--border); border-radius: .9rem; }
+.calendar-event-marker { flex: none; width: .6rem; height: .6rem; border-radius: 2px; background: var(--t); transform: rotate(45deg); }
+.calendar-event-main { flex: 1; min-width: 0; }
+.calendar-event-main strong { overflow-wrap: anywhere; font-size: .9rem; }
+.calendar-event-main .task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .25rem; }
+.calendar-event-main .time { display: inline-flex; align-items: center; gap: .25rem; }
+.calendar-event-main .time svg { width: .9rem; height: .9rem; }
+.legend .calendar-event-legend i { border-radius: 1px; background: var(--muted-fg); transform: rotate(45deg); }
+.dialog-body > h3 { font-size: 1rem; }
+.upcoming-events-hint { margin: -.65rem 0 0; font-size: .82rem; }
+.upcoming-event-list { max-height: 20rem; overflow: auto; overscroll-behavior: contain; }
+.upcoming-event-list .tasks { min-width: 34rem; }
+.upcoming-event-list .calendar-event-indicator { width: 2.5rem; }
+.upcoming-event-list .calendar-event-marker { display: block; margin: auto; }
+.upcoming-event-list .tasks td { padding-block: .7rem; }
