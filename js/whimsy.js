@@ -202,6 +202,20 @@ const THEMES = {
     overdueEmpty:["No missed exits!"],
     imported:"New assignments have pulled into the pit lane!",
     palette:["#e9b18c","#9bc0d0","#d6c2a2"]
+  },
+  dragon: {
+    name:"Draconic Regime",
+    words:["The Dragon’s Hoard","Today’s Treasures","Stolen Treasures",
+      "The Weekly Pillaging","Dragon’s Ledger","Dragon’s Almanac",
+      "The Lair","Allies","Allies","Recruit","Summons",
+      "Today’s Treasures","Unscheduled Treasures"],
+    cheer:"Send a Roar",
+    messages:["Your wings are carrying you!"],
+    rare:["A tiny dragon salutes your achievement."],
+    empty:["The dragon rests; your list is clear."],
+    overdueEmpty:["The hoard has no forgotten tasks."],
+    imported:"A messenger dragon brings new quests!",
+    palette:["#c8794b","#e5ad59","#f0d48a"]
   }
 };
 
@@ -382,6 +396,46 @@ const car = `
   <circle cx="132" cy="194" r="9" fill="#adb9b9"/>
   <circle cx="244" cy="194" r="9" fill="#adb9b9"/>`;
 
+const dragon = `
+  <!-- Flame tail and fan-shaped wings, following the selected Suncrest concept. -->
+  <path d="M137 150Q111 151 91 165Q70 176 48 163L34 151 52 147 48 133 67 144Q94 152 122 137Z"
+    fill="#db6942" stroke="#713f35" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M48 163Q36 160 25 169Q34 154 29 145Q43 148 52 147Z"
+    fill="#ffd06b" stroke="#713f35" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M139 143Q112 119 106 76Q134 82 153 111Q153 72 184 52Q197 81 186 119Q209 97 233 101Q214 133 180 151Z"
+    fill="#ffd06b" stroke="#713f35" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M147 132Q126 108 119 86Q142 97 159 123Q163 83 181 64Q190 96 177 129Q204 108 221 108Q202 133 177 145Z"
+    fill="#f29a48" stroke="#c65c3e" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Slanted neck and round copper-orange body. -->
+  <path d="M169 145Q184 115 202 88Q216 69 239 67"
+    fill="none" stroke="#713f35" stroke-width="30" stroke-linecap="round"/>
+  <path d="M169 143Q184 114 202 88Q216 70 239 68"
+    fill="none" stroke="#d96843" stroke-width="23" stroke-linecap="round"/>
+  <ellipse cx="151" cy="155" rx="47" ry="34"
+    fill="#d96843" stroke="#713f35" stroke-width="4"/>
+  <path d="M143 176Q160 183 179 171L184 185Q161 197 139 187Z"
+    fill="#f0a14f" stroke="#9b553b" stroke-width="2.5"/>
+  <path d="M151 181q7-5 13 0M169 180q6-4 11-1"
+    fill="none" stroke="#ffd06b" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Small feet and a friendly flame-crested head. -->
+  <path d="M132 179 128 201Q127 207 137 207H153Q159 207 156 201L151 183M177 181 180 201Q181 207 191 207H207Q213 207 209 201L202 177"
+    fill="#d96843" stroke="#713f35" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M134 203h17m35 0h17" stroke="#ffd06b" stroke-width="3" stroke-linecap="round"/>
+  <path d="M221 70Q221 49 232 37Q234 53 247 58Q250 43 266 36Q264 56 273 68Z"
+    fill="#ffd06b" stroke="#713f35" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M218 68Q223 57 239 56L267 64Q281 68 286 80L305 87 286 96Q279 108 261 106L233 101Q218 96 218 82Z"
+    fill="#d96843" stroke="#713f35" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M278 78Q294 77 308 87L285 92Z"
+    fill="#f6b65c" stroke="#713f35" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="262" cy="75" r="4.5" fill="#fff1d0" stroke="#713f35" stroke-width="2"/>
+  <circle cx="263" cy="75" r="2.2" fill="#3b302b"/>
+  <circle cx="301" cy="86" r="1.8" fill="#713f35"/>
+  <path d="M277 97Q285 102 292 97" fill="none" stroke="#713f35" stroke-width="2.5" stroke-linecap="round"/>
+  <ellipse cx="274" cy="91" rx="5" ry="3.5" fill="#ef9a7c" opacity=".65"/>
+  <ellipse cx="164" cy="218" rx="92" ry="7" fill="#523d51" opacity=".12"/>`;
+
 /* DECK THE DIVS — North Pole illustration. The lights and elf stay in one compact background. */
 function northPoleArtwork(state = "wrapping") {
   const bulbColors = ["#F45850","#F2C75B","#5FB9F5","#79D57A","#F18AB7"];
@@ -553,6 +607,14 @@ const ART = {
       stroke="#b8c2c4" stroke-width="5"/>
       <path d="M35 198h290" stroke="#f1daa7"
       stroke-width="4" stroke-dasharray="15 12"/>`)
+  },
+  dragon:{
+    hero:svg(dragon),
+    scene:svg(dragon),
+    trim:svg(`<g fill="none" stroke="#c8874d" stroke-width="4" stroke-linecap="round" opacity=".85">
+      <path d="M60 180q30-35 60 0t60 0M60 205q30-35 60 0t60 0"/>
+      <path d="M240 76q22-25 44 0t44 0M240 101q22-25 44 0t44 0"/>
+    </g><g fill="#e7bd66"><circle cx="203" cy="183" r="7"/><circle cx="220" cy="194" r="5"/></g>`)
   }
 };
 
@@ -1567,6 +1629,10 @@ window.CoursewiseWhimsy = {
     cars: {
       cheer: "Rev Up!",
       tabs: ["My Crew", "Add Driver", "Requests"]
+    },
+    dragon: {
+      cheer: "Send a Roar",
+      tabs: ["Allies", "Recruit", "Summons"]
     }
   };
 
@@ -2045,6 +2111,9 @@ window.CoursewiseWhimsy = {
     html[data-whimsy]:not([data-whimsy="off"])
     body #main::before {
       background-image:var(--cw-v53-pattern) !important;
+    }
+    html[data-whimsy="dragon"] body #main::before {
+      background-image:none!important;
     }
 
     /* Repaired illustrations for the three featured worlds. */
@@ -2753,6 +2822,87 @@ window.CoursewiseWhimsy = {
   }
   new MutationObserver(sync).observe(document.documentElement,{attributes:true,attributeFilter:['data-whimsy']});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});
+  else sync();
+})();
+
+/* ===========================================
+   DRACONIC REGIME — Soft rising embers
+   Decorative only; respects reduced-motion settings.
+   =========================================== */
+(() => {
+  const ID="cw-dragon-fire";
+  if(document.getElementById("cw-dragon-fire-style"))return;
+
+  const style=document.createElement("style");
+  style.id="cw-dragon-fire-style";
+  style.textContent=`
+    #${ID} {
+      position:fixed;inset:0;width:100%;height:100vh;height:100dvh;
+      pointer-events:none!important;overflow:hidden;z-index:100;
+      contain:layout paint;
+    }
+    html:not([data-whimsy="dragon"]) #${ID} {display:none!important;}
+    #${ID}::before {
+      content:"";position:absolute;left:0;right:0;bottom:0;height:25vh;
+      background:radial-gradient(ellipse at 50% 100%,rgba(244,112,45,.19),transparent 72%);
+    }
+    #${ID} .cw-dragon-ember {
+      position:absolute;bottom:-12px;left:var(--x);width:var(--size);height:var(--size);
+      border-radius:50% 50% 45% 45%;opacity:0;pointer-events:none;
+      background:radial-gradient(circle at 35% 35%,#fff0b0 0 14%,#ffad4d 43%,#ed5c2b 78%);
+      box-shadow:0 0 7px 2px rgba(255,139,55,.5),0 0 15px rgba(248,103,42,.3);
+      animation:cwDragonEmberRise var(--duration) linear var(--delay) infinite;
+      will-change:transform,opacity;
+    }
+    @keyframes cwDragonEmberRise {
+      0% {transform:translate3d(0,0,0) scale(.45);opacity:0}
+      12% {opacity:var(--opacity)}
+      66% {opacity:var(--opacity)}
+      100% {transform:translate3d(var(--drift),calc(-100dvh - 40px),0) scale(.12);opacity:0}
+    }
+    @media(max-width:650px) {
+      #${ID} .cw-dragon-ember {box-shadow:0 0 6px 1px rgba(255,139,55,.46);}
+    }
+    @media(prefers-reduced-motion:reduce) {
+      #${ID}::before {opacity:.45;}
+      #${ID} .cw-dragon-ember {
+        animation:none!important;will-change:auto;opacity:.2;transform:none;
+        bottom:var(--static-y);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  function sync(){
+    const enabled=document.documentElement.dataset.whimsy==="dragon";
+    let fire=document.getElementById(ID);
+    if(!enabled){if(fire)fire.remove();return;}
+    if(fire||!document.body)return;
+
+    fire=document.createElement("div");
+    fire.id=ID;
+    fire.setAttribute("aria-hidden","true");
+    const count=window.innerWidth<=650?24:38;
+    for(let i=0;i<count;i++){
+      const ember=document.createElement("i");
+      ember.className="cw-dragon-ember";
+      const duration=12+(i%8)*2.1;
+      ember.style.setProperty("--x",`${(i*43.7+9)%100}%`);
+      ember.style.setProperty("--size",`${5+(i%4)}px`);
+      ember.style.setProperty("--duration",`${duration}s`);
+      ember.style.setProperty("--delay",`${-((i*3.9)%duration)}s`);
+      ember.style.setProperty("--drift",`${((i%9)-4)*13}px`);
+      ember.style.setProperty("--opacity",String(.46+(i%4)*.09));
+      ember.style.setProperty("--static-y",`${(i*23)%94}%`);
+      fire.appendChild(ember);
+    }
+    document.body.appendChild(fire);
+  }
+  new MutationObserver(sync).observe(document.documentElement,{
+    attributes:true,attributeFilter:["data-whimsy"]
+  });
+  if(document.readyState==="loading")
+    document.addEventListener("DOMContentLoaded",sync,{once:true});
   else sync();
 })();
 
