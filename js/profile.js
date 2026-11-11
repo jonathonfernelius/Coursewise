@@ -92,7 +92,7 @@
             </div><h3 class="appearance-accent-label">Accent color</h3>
             <div class="theme-grid" role="radiogroup" aria-label="Color theme">${T.themes.map(([id, name]) => `<label class="theme-opt th-${id}"><input type="radio" name="theme" value="${id}"${S.prefs.theme === id ? " checked" : ""}><i></i>${name}</label>`).join("")}</div></section>
           <section class="card"><div class="section-head"><h2>Preferences</h2></div>
-            <div class="form"><div class="field"><label for="p-week">Week starts on</label><select id="p-week">${U.options([["0", "Sunday"], ["1", "Monday"]], String(ws))}</select></div>
+            <div class="form"><div class="field"><label for="p-week">Week starts on</label><select id="p-week" data-dd>${U.options([["0", "Sunday"], ["1", "Monday"]], String(ws))}</select></div>
               <div class="switch-row"><div><label for="p-done">Show completed tasks</label><small>Show or hide completed tasks on Today, To-do, and Calendar.</small></div>
                 <span class="switch"><input id="p-done" type="checkbox"${S.prefs.showDone ? " checked" : ""}><span></span></span></div>
               <div class="switch-row"><div><label for="p-24h">Military time (24-hour)</label><small>Show times like 15:30 instead of 3:30 PM.</small></div>
@@ -126,21 +126,8 @@
     };
     $("delete-account").onclick=deleteAccountDialog;
     $("logout").onclick = e => U.run(async () => { await T.logout(); location.href = "index.html"; }, e.currentTarget);
-    const usernameInput = $("a-user");
-    const usernameSpaceError = "Spaces are not allowed in the username.";
-    const validateUsername = () => {
-      const hasWhitespace = /\s/.test(usernameInput.value);
-      usernameInput.setCustomValidity(hasWhitespace ? usernameSpaceError : "");
-      return !hasWhitespace;
-    };
-    usernameInput.addEventListener("input", validateUsername);
-    usernameInput.addEventListener("invalid", () => {
-      if (!validateUsername()) U.toast(usernameSpaceError);
-    });
-    validateUsername();
     $("account").onsubmit = e => { e.preventDefault(); U.run(async () => {
       e.preventDefault();
-      if (!validateUsername()) { U.toast(usernameSpaceError); return; }
       await T.updateUser({ first: $("a-first").value.trim(), last: $("a-last").value.trim(), email: $("a-email").value.trim(), username: $("a-user").value.trim() });
       window.CoursewisePhotos.syncHeader();
       U.toast("Account saved"); render();
@@ -158,22 +145,8 @@
     };
     $("add-cat").onclick = () => U.categoryDialog({ done: render });
     root.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => U.categoryDialog({ cat: S.categories.find(c => c.id === b.dataset.cat), done: render }));
-    const passwordInputs = [$("pw1"), $("pw2")];
-    const passwordSpaceError = "Spaces are not allowed in the password.";
-    const validatePassword = input => {
-      const hasWhitespace = /\s/.test(input.value);
-      input.setCustomValidity(hasWhitespace ? passwordSpaceError : "");
-      return !hasWhitespace;
-    };
-    passwordInputs.forEach(input => {
-      input.addEventListener("input", () => validatePassword(input));
-      input.addEventListener("invalid", () => {
-        if (!validatePassword(input)) U.toast(passwordSpaceError);
-      });
-    });
     $("password").onsubmit = e => { e.preventDefault(); U.run(async () => {
       e.preventDefault();
-      if (passwordInputs.some(input => !validatePassword(input))) { U.toast(passwordSpaceError); return; }
       if ($("pw1").value !== $("pw2").value) { U.toast("Passwords don't match"); return; }
       await T.changePassword($("pw1").value); e.target.reset(); U.toast("Password updated");
     }, e.submitter); };

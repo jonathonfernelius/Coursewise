@@ -1065,6 +1065,78 @@ function updateEmptyStates() {
   });
 }
 
+/* Suggestion box: sends a short theme idea to Supabase
+   (table: coursewise_whimsy_suggestions, see migrations). */
+function mountSuggestionBox(panel) {
+  const MIN = 3, MAX = 300;
+  const idea = panel.querySelector("#cw-w-idea");
+  const send = panel.querySelector("#cw-w-send");
+  const tally = panel.querySelector("#cw-w-count");
+  const note = panel.querySelector("#cw-w-note");
+  if (!idea || !send) return;
+
+  const say = (text,tone) => {
+    note.textContent = text;
+    note.dataset.tone = tone || "";
+  };
+
+  const sync = () => {
+    tally.textContent = idea.value.length + " / " + MAX;
+    send.disabled = idea.value.trim().length < MIN;
+  };
+
+  idea.addEventListener("input",() => {
+    say("");
+    sync();
+  });
+
+  send.addEventListener("click",async () => {
+    const text = idea.value.trim().replace(/\s+/g," ");
+    if (text.length < MIN || send.dataset.busy) return;
+
+    send.dataset.busy = "1";
+    send.disabled = true;
+    send.textContent = "Sending…";
+    say("");
+
+    try {
+      const db = window.tidyClient;
+      if (!db) throw new Error("offline");
+
+      const {data,error:authError} = await db.auth.getUser();
+      if (authError || !data?.user) throw new Error("signed-out");
+
+      const {error} = await db
+        .from("coursewise_whimsy_suggestions")
+        .insert({auth_user_id:data.user.id,suggestion:text});
+      if (error) throw error;
+
+      idea.value = "";
+      say("Thank you! Your idea is in the suggestion box.","ok");
+    } catch (error) {
+      console.error("Whimsy suggestion could not be sent:", error);
+      const code = error?.code || "";
+      const detail = String(error?.message || "");
+      let text = "We couldn't send that right now. Please try again.";
+
+      if (code === "PGRST205" || code === "42P01" || /does not exist|schema cache/i.test(detail)) {
+        // The table is missing: the migration has not been run in Supabase yet.
+        text = "The suggestion box isn't set up yet. Run the Whimsy suggestions SQL in Supabase, then try again.";
+      } else if (code === "42501" && /row-level security/i.test(detail)) {
+        text = "You've shared a lot of ideas today. Try again tomorrow.";
+      } else if (code === "42501") {
+        // Permission denied: the grants in the migration are missing.
+        text = "The suggestion box doesn't have permission yet. Re-run the Whimsy suggestions SQL in Supabase.";
+      }
+      say(text, "error");
+    } finally {
+      delete send.dataset.busy;
+      send.textContent = "Send idea";
+      sync();
+    }
+  });
+}
+
 /* Whimsy controls sit BELOW Show Completed Tasks. */
 function mountSettings() {
   const row = document.querySelector("#p-done")
@@ -1096,12 +1168,29 @@ function mountSettings() {
 
       <div class="cw-w-picker" id="cw-w-picker" hidden>
         <label for="cw-w-theme">Choose your whimsy theme</label>
-        <select id="cw-w-theme">
+        <select id="cw-w-theme" data-dd>
           ${Object.entries(THEMES).map(([key,theme]) =>
             `<option value="${key}">${theme.name}</option>`
           ).join("")}
         </select>
         <small>Your whimsical world can change whenever you like.</small>
+      </div>
+
+      <div class="cw-w-suggest" id="cw-w-suggest">
+        <label for="cw-w-idea">Suggest a whimsy world</label>
+        <small id="cw-w-idea-help">
+          Dreaming of a theme we don't have yet? Drop it in the box.
+        </small>
+        <textarea id="cw-w-idea" rows="3" maxlength="300"
+          aria-describedby="cw-w-idea-help cw-w-count"
+          placeholder="A deep-sea library, a cozy cabin, a retro arcade..."></textarea>
+        <div class="cw-w-suggest-foot">
+          <span class="cw-w-count" id="cw-w-count">0 / 300</span>
+          <button type="button" class="btn btn-secondary" id="cw-w-send" disabled>
+            Send idea
+          </button>
+        </div>
+        <p class="cw-w-note" id="cw-w-note" role="status" aria-live="polite"></p>
       </div>
     `;
 
@@ -1125,6 +1214,8 @@ function mountSettings() {
       .addEventListener("change",e =>
         save({theme:e.target.value})
       );
+
+    mountSuggestionBox(panel);
   }
 
   panel.querySelector("#cw-w-on").checked = config.enabled;

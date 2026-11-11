@@ -35,13 +35,19 @@
     .cw-canvas-controls>.cw-canvas-actions{grid-column:1;grid-row:1;min-width:0}
     .cw-canvas-controls>#cw-canvas-preview{grid-column:1/-1;grid-row:2;min-width:0}
     .cw-canvas-footer{display:flex;justify-content:flex-end;grid-column:2;grid-row:1}
-    .cw-canvas-controls:has(#cw-canvas-preview:not(:empty))>.cw-canvas-footer{grid-row:3;margin-top:12px}
+    .cw-canvas-controls:has(#cw-canvas-preview:not(:empty))>.cw-canvas-footer{grid-row:3;margin-top:8px}
     @media(max-width:360px){.cw-canvas-controls{column-gap:8px}.cw-canvas-controls #cw-preview-button{padding-inline:10px}}
     .cw-canvas-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .cw-canvas-actions #cw-preview-button{font-size:13px;padding:10px 16px;min-height:40px;border-radius:12px}
     .cw-canvas-footer #cw-disconnect{font-size:12px;padding:8px 4px;min-height:36px;background:transparent;border-color:transparent;color:var(--muted-fg);box-shadow:none}
     .cw-canvas-footer #cw-disconnect:hover{color:var(--fg);text-decoration:underline}
     #cw-canvas-preview:empty{display:none}
+    /* Spacing: the preview sits 16px below the button row; while only the loading card shows (button hidden) it sits snug under the identity row. */
+    #cw-canvas-preview{margin-top:16px}
+    .cw-canvas-actions:has(#cw-preview-button[hidden])~#cw-canvas-preview{margin-top:0}
+    #cw-canvas-preview>.cw-activity:only-child{margin:0}
+    #cw-canvas-message:empty{display:none}
+    .cw-activity:not(:has(.cw-activity-detail:not(:empty))):not(:has(progress)){align-items:center}
     @keyframes cw-calendar-sway{0%,65%,100%{transform:rotate(0)}76%{transform:rotate(-3deg)}87%{transform:rotate(2deg)}}
     @media(prefers-reduced-motion:reduce){.cw-canvas-symbol svg{animation:none}}
     .cw-connection-status {
@@ -329,25 +335,27 @@
 
     .cw-list-picker{position:relative;display:grid;gap:6px;min-width:0}
     .cw-list-picker-label{font-size:12px;color:var(--muted-fg)}
-    .cw-list-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;text-align:left;cursor:pointer}
-    .cw-list-picker-trigger:hover{background:var(--muted)}
+    .cw-list-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:2.6rem;padding:0 .85rem;border:1px solid var(--border);border-radius:.8rem;background:var(--card);color:var(--fg);font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+    .cw-list-picker-trigger:hover{border-color:color-mix(in oklch,var(--primary) 45%,var(--border));background:color-mix(in oklch,var(--primary) 4%,var(--card))}
     .cw-list-picker-trigger:focus-visible,.cw-list-picker-trigger[aria-expanded=true]{outline:2px solid var(--ring);outline-offset:0;border-color:var(--ring)}
     .cw-list-picker-trigger svg{width:16px;height:16px;flex:none;color:var(--muted-fg)}
     .cw-list-picker-value{display:flex;align-items:center;gap:8px;min-width:0}
     .cw-list-picker-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .cw-list-picker-name.is-empty{color:var(--muted-fg)}
     .cw-list-picker-new{flex:none;font-size:11px;font-weight:500;line-height:1;padding:3px 8px;border-radius:999px;background:var(--accent);color:var(--accent-fg)}
-    .cw-list-picker-menu{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;display:flex;flex-direction:column;max-height:min(20rem,55dvh);box-sizing:border-box;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow-card,0 8px 24px rgba(0,0,0,.12));overflow:hidden}
+    .cw-list-picker-menu{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;display:flex;flex-direction:column;max-height:min(20rem,55dvh);box-sizing:border-box;border:1px solid var(--border);border-radius:var(--dd-menu-radius,.9rem);background:var(--card);box-shadow:var(--dd-shadow,0 12px 30px rgba(0,0,0,.14));overflow:hidden}
     .cw-list-picker-menu[hidden]{display:none}
     .cw-list-picker-menu.is-up{top:auto;bottom:calc(100% + 4px)}
     .cw-list-picker-search{flex:none;margin:6px 6px 0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px}
     .cw-list-picker-search:focus-visible,.cw-list-picker-input:focus-visible{outline:2px solid var(--ring);outline-offset:0;border-color:var(--ring)}
     .cw-list-picker-options{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px;display:grid;gap:1px;align-content:start}
-    .cw-list-picker-option{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:6px 8px;border:0;border-radius:8px;background:transparent;color:var(--fg);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+    .cw-list-picker-option{display:flex;align-items:center;gap:.6rem;width:100%;min-height:2.4rem;padding:.4rem .65rem;border:0;border-radius:.6rem;background:transparent;color:var(--fg);font:inherit;font-size:14px;text-align:left;cursor:pointer}
     .cw-list-picker-option:hover,.cw-list-picker-option:focus-visible{background:var(--muted);outline:none}
     .cw-list-picker-option:focus-visible{box-shadow:inset 0 0 0 2px var(--ring)}
     .cw-list-picker-check{width:16px;height:16px;flex:none;color:var(--primary,currentColor);visibility:hidden}
     .cw-list-picker-option[aria-selected=true] .cw-list-picker-check{visibility:visible}
+    .cw-list-picker-option[aria-selected=true]{background:color-mix(in oklch,var(--primary) 9%,var(--card));font-weight:500}
+    .cw-import-course .dd-trigger{font-size:14px}
     .cw-list-picker-option-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .cw-list-picker-empty{padding:8px;font-size:13px;color:var(--muted-fg)}
     .cw-list-picker-create{flex:none;display:grid;gap:6px;padding:10px 12px;border-top:1px solid var(--border);background:color-mix(in oklch,var(--muted) 55%,var(--card))}
@@ -465,6 +473,7 @@
     wrapper.textContent = title;
 
     const select = document.createElement("select");
+    select.setAttribute("data-dd", "");
 
     for (const option of options) {
       const node = document.createElement("option");
@@ -1337,7 +1346,7 @@
         <div class="cw-canvas-actions">
           <button type="button" id="cw-preview-button" class="btn btn-primary">Check for updates</button>
         </div>
-        <div id="cw-canvas-preview" style="margin-top:20px"></div>
+        <div id="cw-canvas-preview"></div>
         <div class="cw-canvas-footer"><button type="button" id="cw-disconnect" class="btn btn-outline">Disconnect</button></div>
         </div>
       `;

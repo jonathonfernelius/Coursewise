@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="js/theme.js?v=dark-mode-4"></script>
-  <link rel="stylesheet" href="css/styles.css?v=14">
-  <link rel="stylesheet" href="css/admin.css">
-<link rel="stylesheet" href="css/appearance.css?v=3">
+  <link rel="stylesheet" href="css/styles.css?v=19">
+  <link rel="stylesheet" href="css/admin.css?v=ideas-1">
+<link rel="stylesheet" href="css/appearance.css?v=4">
 </head>
 <body>
   <a class="sr-only" href="#main">Skip to content</a>
@@ -86,6 +86,10 @@
             <h2 id="retention-title">Retention</h2>
             <div class="okr-list" id="retention-list"></div>
           </section>
+          <section class="okr-group" aria-labelledby="feedback-title">
+            <h2 id="feedback-title">Feedback</h2>
+            <div class="okr-list" id="feedback-list"></div>
+          </section>
         </aside>
 
         <section class="okr-detail card" id="okr-detail" aria-live="polite">
@@ -99,7 +103,7 @@
 
           <div class="analytics-controls" id="analytics-controls">
             <label class="control-field">Time range
-              <select id="range-filter" aria-label="Analytics time range">
+              <select id="range-filter" data-dd="compact" aria-label="Analytics time range">
                 <option value="7">Past week</option>
                 <option value="30" selected>Past month</option>
                 <option value="180">Past 6 months</option>
@@ -115,7 +119,7 @@
             </fieldset>
 
             <label class="control-field" id="activity-filter-field">User activity
-              <select id="activity-filter" aria-label="Filter by user activity">
+              <select id="activity-filter" data-dd="compact" aria-label="Filter by user activity">
                 <option value="all" selected>All users</option>
                 <option value="active">Active in last 30 days</option>
               </select>
@@ -281,6 +285,29 @@
             </div>
             <p class="chart-footnote" id="canvas-footnote"></p>
           </section>
+
+          <!-- Feedback: theme ideas members send from Profile > Appearance. -->
+          <section class="analytics-panel" id="panel-whimsy-ideas" aria-label="Whimsy theme ideas" hidden>
+            <div class="metric-grid metric-grid-three">
+              <div class="metric-card">
+                <span>Ideas received</span>
+                <strong id="ideas-total">—</strong>
+                <small>Submitted in this range</small>
+              </div>
+              <div class="metric-card">
+                <span>People sharing</span>
+                <strong id="ideas-people">—</strong>
+                <small>Unique accounts</small>
+              </div>
+              <div class="metric-card">
+                <span>Latest idea</span>
+                <strong id="ideas-latest">—</strong>
+                <small>Most recent submission</small>
+              </div>
+            </div>
+            <ol class="idea-list" id="whimsy-ideas-list"></ol>
+            <p class="chart-footnote" id="ideas-footnote"></p>
+          </section>
         </section>
       </div>
     </div>
@@ -289,6 +316,7 @@
   <div id="admin-toast" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="js/supabase.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/dropdown.js?v=1"></script>
+<script src="js/admin.js?v=ideas-1"></script>
 </body>
 </html>

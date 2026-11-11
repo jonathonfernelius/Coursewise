@@ -1,7 +1,6 @@
 /* Friends UI prototype — inherits the selected Coursewise theme. */
-.cw-f-home-column{grid-area:today;display:grid;gap:1.25rem;min-width:0}.stack .cw-f-home-column .today-card{grid-area:auto}
-.cw-f-trigger{display:flex;align-items:center;gap:.4rem;background:transparent;border:0;padding:.5rem .6rem;border-radius:999px;font-size:.85rem;white-space:nowrap;color:var(--muted-fg)}
-.cw-f-trigger:hover{background:var(--accent);color:var(--accent-fg)}.cw-f-trigger svg{width:1.2rem;height:1.2rem}.cw-f-badge{display:grid;place-items:center;min-width:1.15rem;height:1.15rem;border-radius:50%;font-size:.65rem;background:var(--primary);color:var(--primary-fg)}.cw-f-badge[hidden]{display:none}
+.cw-f-trigger{position:relative;display:grid;place-items:center;flex:none;width:2.4rem;height:2.4rem;background:transparent;border:0;padding:0;border-radius:50%;font-size:.85rem;white-space:nowrap;color:var(--muted-fg);transition:background .15s,color .15s}
+.cw-f-trigger:hover{background:var(--accent);color:var(--accent-fg)}.cw-f-trigger svg{width:1.2rem;height:1.2rem}.cw-f-badge{position:absolute;top:-.1rem;right:-.15rem;display:grid;place-items:center;min-width:1.1rem;height:1.1rem;padding:0 .25rem;border-radius:999px;font-size:.62rem;line-height:1;background:var(--primary);color:var(--primary-fg);box-shadow:0 0 0 2px var(--bg)}.cw-f-badge[hidden]{display:none}
 .cw-f-card .section-head{margin-bottom:.45rem}.cw-f-card h2{display:flex;align-items:center;gap:.5rem}.cw-f-demo{font-size:.65rem;color:var(--muted-fg);border:1px solid var(--border);padding:.2rem .5rem;border-radius:99px}.cw-f-subtitle{font-size:.85rem;color:var(--muted-fg)}
 .cw-f-mini{display:flex;gap:1.75rem;padding:1.5rem 0}.cw-f-mini>div{display:grid;justify-items:center;gap:.4rem;font-size:.75rem}.cw-f-avatar{display:grid;place-items:center;width:2.65rem;height:2.65rem;flex-shrink:0;border-radius:50%;background:color-mix(in oklch,var(--friend-color) 13%,var(--card));color:var(--friend-color);font-weight:500;font-size:.85rem}
 .cw-f-request{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.8rem 1rem;background:var(--secondary);color:var(--accent-fg);border:0;border-radius:.8rem;margin-bottom:1rem;font-size:.8rem}.cw-f-request b{margin-right:.4rem}.cw-f-card-actions{display:flex;gap:.6rem}.cw-f-card-actions .btn{flex:1;padding:0 .5rem;font-size:.8rem}
@@ -11,7 +10,7 @@
 .cw-f-search{display:grid;gap:.5rem;font-size:.8rem;margin:1.25rem 0}.cw-f-search input{width:100%;border:1px solid var(--border);border-radius:.8rem;padding:.85rem;background:var(--bg);font-size:.8rem}
 .cw-f-person{display:flex;align-items:center;gap:.75rem;padding:1rem 0;border-bottom:1px solid var(--border)}.cw-f-person-copy{display:grid;gap:.15rem;min-width:0;flex:1}.cw-f-person-copy strong{font-size:.85rem;font-weight:400}.cw-f-person-copy span{font-size:.75rem;color:var(--muted-fg)}.cw-f-person-actions{display:flex;align-items:center;gap:.2rem}.cw-f-person-actions .btn{font-size:.72rem;min-height:2.1rem;padding:0 .65rem}.cw-f-connected{font-size:.72rem;color:var(--primary)}.cw-f-note{background:var(--bg);border:1px dashed var(--border);padding:1rem;border-radius:.8rem;font-size:.75rem;color:var(--muted-fg);margin-top:2rem}.cw-f-note strong{font-weight:400;color:var(--fg)}.cw-f-note p{margin-top:.3rem}.cw-f-feedback{font-size:.8rem;color:var(--primary);margin-top:1rem}.cw-f-empty{padding:2rem 1rem;text-align:center;font-size:.85rem;color:var(--muted-fg)}
 @keyframes cw-f-enter{from{transform:translateX(100%)}to{transform:translateX(0)}}
-@media(max-width:720px){.cw-f-trigger{margin-left:auto}.site-header .avatar{margin-left:0;flex-shrink:0}.header-row{gap:.6rem}.cw-f-trigger-label{display:none}}
+@media(max-width:720px){.cw-f-trigger{margin-left:auto}.site-header .avatar{margin-left:0;flex-shrink:0}.header-row{gap:.6rem}}
 @media(max-width:360px){.cw-f-dialog{padding:1.5rem 1rem}.cw-f-person{gap:.5rem}}
 @media(prefers-reduced-motion:reduce){.cw-f-dialog[open]{animation:none}}
 
@@ -21,13 +20,7 @@
 .cw-f-cheer{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;flex-shrink:0;white-space:nowrap;min-height:2.2rem;padding:.4rem .65rem;border:1px solid var(--border);border-radius:999px;background:var(--card);color:var(--fg);font-size:.72rem;transition:background .15s,border-color .15s}
 .cw-f-cheer:hover:not([aria-disabled=true]){background:var(--accent);border-color:var(--primary)}.cw-f-cheer.is-cheered{background:var(--secondary);color:var(--accent-fg);border-color:transparent;cursor:default}
 @media(max-width:360px){.cw-f-home-list .cw-f-person{gap:.5rem}.cw-f-home-list .cw-f-avatar{width:2.2rem;height:2.2rem}.cw-f-cheer{padding:.4rem .5rem}.cw-f-home-list .cw-f-person-copy strong{font-size:.8rem}}
-/* Keep all task sections ahead of Friends on smaller screens. */
-@media(max-width:860px){
-  .stack{grid-template-areas:"hero" "today" "overdue" "week" "friends"}
-  .cw-f-home-column{display:contents}
-  .stack .cw-f-home-column .today-card{grid-area:today}
-  .stack .cw-f-card{grid-area:friends}
-}
+/* Mobile order (hero, Today, Overdue, This week, Friends) is set by .stack in styles.css, so task sections stay ahead of Friends. */
 /* A small win, with a brighter daily badge and a quieter weekly badge. */
 .cw-f-avatar{width:3rem;height:3rem;font-size:.95rem;box-shadow:0 0 0 3px var(--card),0 0 0 4px color-mix(in oklch,var(--friend-color) 16%,transparent)}
 .cw-f-person-copy{gap:.35rem}.cw-f-person-copy>strong{font-weight:400}
@@ -106,3 +99,18 @@
 @keyframes cw-f-fade-in{from{opacity:0}to{opacity:1}}
 @keyframes cw-f-fade-out{from{opacity:1}to{opacity:0}}
 @media(prefers-reduced-motion:reduce){.cw-f-dialog[open],.cw-f-dialog[open]::backdrop,.cw-f-dialog.is-closing,.cw-f-dialog.is-closing::backdrop{animation:none}}
+
+/* Desktop: Friends now sits beside the Daily snapshot (a shorter slot), so it uses a compact header with the actions on the title row. */
+@media(min-width:861px){
+  .stack .cw-f-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;column-gap:.75rem;align-content:start;height:14rem;padding-block:1.15rem;overflow:hidden}
+  .stack .cw-f-card .section-head{grid-area:1/1;margin-bottom:.2rem;align-self:center}
+  .stack .cw-f-card .cw-f-subtitle{display:none}
+  .stack .cw-f-card .cw-f-card-actions{grid-area:1/2;align-self:center;gap:.4rem}
+  .stack .cw-f-card .cw-f-card-actions .btn{flex:none;min-height:2.1rem;padding:0 .8rem;font-size:.74rem;border-radius:999px;white-space:nowrap}
+  .stack .cw-f-card .cw-f-home-list{grid-column:1/-1;grid-row:2;margin:0 -.35rem;padding:.2rem .35rem;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .stack .cw-f-card .cw-f-home-list .cw-f-person{padding:.45rem 0}
+  .stack .cw-f-card .cw-f-home-list .cw-f-avatar{width:2.5rem;height:2.5rem;font-size:.8rem}
+  .stack .cw-f-card .cw-f-home-list .cw-f-cheer{min-height:2.2rem}
+  .stack .cw-f-card .cw-f-empty{padding:1.1rem 1rem}
+  .stack .cw-f-card .cw-f-request{grid-column:1/-1;grid-row:3;margin:.45rem 0 0;padding:.55rem .9rem}
+}

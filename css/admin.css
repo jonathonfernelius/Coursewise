@@ -661,3 +661,16 @@
     font-size: .75rem;
   }
 }
+
+/* Feedback: Whimsy ideas list. */
+.idea-list { display: grid; gap: .55rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.idea-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--card); }
+.idea-row p { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: .9rem; line-height: 1.5; }
+.idea-row time { flex: none; padding-top: .1rem; color: var(--muted-fg); font-size: .74rem; white-space: nowrap; }
+.idea-empty { padding: 1.4rem 1rem; border: 1px dashed var(--border); border-radius: 1rem; color: var(--muted-fg); font-size: .88rem; text-align: center; }
+@media (max-width: 560px) { .idea-row { flex-direction: column; gap: .35rem; } }
+
+/* The shared dropdown, sized to the admin filter pills. */
+.control-field .dd { min-width: 9.4rem; }
+.control-field .dd-trigger { min-height: 2.55rem; padding: .45rem .75rem; border-radius: 999px; font-size: .82rem; font-weight: 400; }
+@media (max-width: 720px) { .control-field .dd { width: 100%; min-width: 0; } }

@@ -163,9 +163,13 @@
       c => c.innerHTML=cardBody()
     );
 
+    const pending=count('request')+(Number(data.unread)||0);
     document.querySelectorAll('.cw-f-badge').forEach(b=>{
-      b.textContent=count('request')+(Number(data.unread)||0);
-      b.hidden=!(count('request')+(Number(data.unread)||0));
+      b.textContent=pending;
+      b.hidden=!pending;
+    });
+    document.querySelectorAll('.cw-f-trigger').forEach(t=>{
+      t.setAttribute('aria-label',pending?`Open friends, ${pending} new`:'Open friends');
     });
 
     document.querySelectorAll('.cw-f-notif-badge').forEach(b=>{
@@ -505,9 +509,8 @@
 
     profile.insertAdjacentHTML(
       'beforebegin',
-      `<button class="cw-f-trigger" data-friends-open="friends" aria-label="Open friends" aria-haspopup="dialog">
+      `<button class="cw-f-trigger" data-friends-open="friends" aria-label="Open friends" title="Friends" aria-haspopup="dialog">
         ${icon}
-        <span class="cw-f-trigger-label">Friends</span>
         <span class="cw-f-badge" hidden></span>
       </button>`
     );

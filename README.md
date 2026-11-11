@@ -20,7 +20,7 @@ Students often struggle to manage assignments and deadlines across multiple cour
 4. Fill out the required information on the signup screen and create your account.
 5. Once signed in, you will be taken to the **Today** page.
 6. Use the navigation bar to switch between **Today**, **To-do**, **Calendar**, and **Profile**.
-7. You can also use the **Friends** feature to connect with other students. Authorized admins have access to an additional admin screen.
+7. You can also use the **Friends** icon in the top bar to connect with other students. Authorized admins have access to an additional admin screen, including a **Whimsy ideas** view of member theme suggestions.
 8. Account data and tasks are stored in Supabase so they remain available when you sign in again.
 
 ## Screens and Features
@@ -40,12 +40,12 @@ The login screen is the starting point of the application. Returning users can s
 The Today page is the main dashboard and gives users a quick overview of their day.
 1. **Daily snapshot:** Displays how many tasks are left today, a short encouraging message, and how many tasks have been completed today.
 2. **Streak:** Shows current task-completion streak progress and reminds users when they need to finish a task to continue it.
-3. **Overdue:** Shows unfinished tasks with deadlines that have already passed.
-4. **This week:** Displays a seven-day overview with task counts, a small visual chart, and an agenda that can be grouped **By day** or **By list**.
-5. **Today:** Lists tasks due today, with controls to mark tasks complete or manage them.
-6. **Friends:** Shows a small friends panel where users can visit friends' profiles, send cheers, and access their friend list.
+3. **Today:** Lists tasks due today, with controls to mark tasks complete or manage them.
+4. **Friends:** Sits beside the snapshot with a compact list where users can visit friends' profiles, send cheers, and open their friend list.
+5. **Overdue:** Shows unfinished tasks with deadlines that have already passed.
+6. **This week:** Displays a seven-day overview with task counts, a small visual chart, and an agenda that can be grouped **By day** or **By list**.
 7. **Add task:** Allows users to create a task without leaving the dashboard.
-8. **Canvas reminder:** If Canvas is not connected, the dashboard can display a reminder linking to the connection setup.
+8. **Canvas reminder:** If Canvas is not connected, the dashboard can display a reminder linking to the connection setup. When Canvas is connected, a banner appears if there are new items to review, and a small card confirms when due dates were synced.
 
 **To-do lists**
 
@@ -113,7 +113,7 @@ The Profile screen is where users manage their account and personal settings.
 2. **Canvas:** Connect Canvas, check its connection, review available assignments and calendar items, import chosen items, or disconnect.
 3. **Your streaks:** View the current streak and personal-best streak. Completing a task on consecutive days builds a streak; the app uses Mountain Time when determining the day.
 4. **Account:** Update your first name, last name, and username. Your account email is shown as your sign-in email.
-5. **Appearance:** Choose light or dark mode, an accent color theme, and optional Whimsy Mode.
+5. **Appearance:** Choose light or dark mode, an accent color theme, and optional Whimsy Mode. A suggestion box lets users send ideas for new whimsy themes.
 6. **Preferences:** Choose whether weeks begin on Sunday or Monday, whether completed tasks are displayed, and whether times use 12-hour or 24-hour formatting.
 7. **Categories:** Create and edit categories and their colors to organize tasks.
 8. **Password:** Change your account password.

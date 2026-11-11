@@ -71,23 +71,53 @@ main{flex:1;min-width:0;padding:2.5rem 0 4rem}
 .field input,.field select{width:100%;min-height:2.6rem;padding:0 .85rem;border:1px solid var(--border);border-radius:.8rem;background:var(--card)}
 .field input:focus,.field select:focus{outline:2px solid var(--ring);outline-offset:0;border-color:var(--ring)}
 .category-picker{position:relative}
-.category-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:.7rem;width:100%;min-height:2.6rem;padding:0 .85rem;border:1px solid var(--border);border-radius:.8rem;background:var(--card);color:var(--fg);text-align:left}
-.category-picker-trigger:focus-visible{outline:2px solid var(--ring);outline-offset:0;border-color:var(--ring)}
-.category-picker-trigger svg{width:1rem;height:1rem;flex:none}
-.category-picker-menu{position:absolute;z-index:5;top:calc(100% + .25rem);left:0;right:0;display:grid;grid-template-columns:minmax(0,1fr);gap:.05rem;width:100%;min-width:0;box-sizing:border-box;max-height:min(16rem,50dvh);overflow-x:hidden;overflow-y:auto;padding:.25rem;border:1px solid var(--border);border-radius:.8rem;background:var(--card);box-shadow:var(--shadow-card)}
 .category-picker-menu[hidden]{display:none}
 .category-picker-item{display:flex;align-items:center;gap:.2rem;width:100%;min-width:0;box-sizing:border-box}
-.category-picker-choice,.category-picker-item [role=menuitemradio]{display:flex;align-items:center;flex:1;min-width:0;min-height:2.1rem;padding:.3rem .5rem;border:0;border-radius:.5rem;background:transparent;color:var(--fg);font:inherit;font-size:.9rem;text-align:left}
+.category-picker-choice,.category-picker-item [role=menuitemradio]{display:flex;align-items:center;flex:1;min-width:0;min-height:2.4rem;padding:.4rem .65rem;border:0;border-radius:.6rem;background:transparent;color:var(--fg);font:inherit;font-size:.92rem;text-align:left}
 .category-picker-choice:hover,.category-picker-item [role=menuitemradio]:hover{background:var(--muted)}
 .category-picker-choice:focus-visible,.category-picker-item button:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
-.category-picker-item [aria-checked=true]::before{content:"";width:.45rem;height:.45rem;flex:none;margin-right:.55rem;border-radius:50%;background:var(--primary)}
+.category-picker-item [role=menuitemradio]::before,.category-picker-choice[role=menuitemradio]::before{content:"";width:1rem;height:1rem;flex:none;margin-right:.6rem;background:var(--primary);opacity:0;-webkit-mask:var(--dd-check) center/contain no-repeat;mask:var(--dd-check) center/contain no-repeat}
+.category-picker-item [aria-checked=true]::before,.category-picker-choice[aria-checked=true]::before{opacity:1}
+:root{--dd-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 6'/%3E%3C/svg%3E")}
 .category-picker-item [role=menuitemradio]{flex:1 1 0%;white-space:nowrap;overflow-x:auto;overflow-y:hidden;text-overflow:clip;scrollbar-width:none;overscroll-behavior-x:contain}
 .category-picker-item [role=menuitemradio]::-webkit-scrollbar{display:none}
-.category-picker-choice[data-new-category]{white-space:nowrap}
+.category-picker-choice[data-new-category]{white-space:nowrap;color:var(--primary-dark);font-weight:500;margin-top:.2rem;border-top:1px solid var(--border);border-radius:0 0 .6rem .6rem}
 .category-picker-choice svg{width:1rem;height:1rem;flex:none}
 .category-picker-delete{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border:0;border-radius:.5rem;background:transparent;color:var(--muted-fg)}
 .category-picker-delete:hover{background:var(--danger-soft);color:var(--danger)}
 .category-picker-delete svg{width:1rem;height:1rem}
+
+/* Shared dropdown spec. Native selects upgraded by js/dropdown.js (.dd-*), the category picker and the sort menu all
+   use these same trigger, menu and option looks, so every dropdown in the app matches. */
+:root{--dd-menu-radius:.9rem;--dd-shadow:0 12px 30px oklch(.2 .02 var(--hue)/.16)}
+.dd{position:relative;min-width:0}
+.dd-native{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+.dd-trigger,.category-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:.7rem;width:100%;min-height:2.6rem;padding:0 .85rem;border:1px solid var(--border);border-radius:.8rem;background:var(--card);color:var(--fg);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background .15s}
+.dd-trigger:hover,.category-picker-trigger:hover{border-color:color-mix(in oklch,var(--primary) 45%,var(--border));background:color-mix(in oklch,var(--primary) 4%,var(--card))}
+.dd-trigger:focus-visible,.dd-trigger[aria-expanded=true],.category-picker-trigger:focus-visible,.category-picker-trigger[aria-expanded=true]{outline:2px solid var(--ring);outline-offset:0;border-color:var(--ring)}
+.dd-trigger:disabled{opacity:.6;cursor:not-allowed}
+.dd-value{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-value.is-placeholder{color:var(--muted-fg)}
+.dd-chevron,.category-picker-trigger svg{width:1rem;height:1rem;flex:none;color:var(--muted-fg);transition:transform .18s}
+.dd-trigger[aria-expanded=true] .dd-chevron,.category-picker-trigger[aria-expanded=true] svg{transform:rotate(180deg)}
+.dd-menu,.category-picker-menu{position:absolute;z-index:30;top:calc(100% + .3rem);left:0;right:0;display:grid;grid-template-columns:minmax(0,1fr);gap:.1rem;width:100%;min-width:0;box-sizing:border-box;max-height:min(16rem,50dvh);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:.3rem;border:1px solid var(--border);border-radius:var(--dd-menu-radius);background:var(--card);box-shadow:var(--dd-shadow);outline:none}
+.dd-menu[hidden]{display:none}
+.dd-menu.is-up{top:auto;bottom:calc(100% + .3rem)}
+.dd-option{display:flex;align-items:center;gap:.6rem;min-height:2.4rem;padding:.4rem .65rem;border-radius:.6rem;color:var(--fg);font-size:.92rem;cursor:pointer;user-select:none}
+.dd-option.is-active{background:var(--muted)}
+.dd-option[aria-selected=true]{background:color-mix(in oklch,var(--primary) 9%,var(--card));font-weight:500}
+.dd-option[aria-selected=true].is-active{background:color-mix(in oklch,var(--primary) 14%,var(--card))}
+.dd-check{display:grid;place-items:center;width:1rem;height:1rem;flex:none;color:var(--primary);opacity:0}
+.dd-check svg{width:1rem;height:1rem}
+.dd-option[aria-selected=true] .dd-check{opacity:1}
+.dd-option-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-sep{height:1px;margin:.25rem .35rem;background:var(--border)}
+.dd-option.is-action{color:var(--primary-dark);font-weight:500}
+.dd-option.is-action .dd-check{display:none}
+.dd-compact .dd-trigger{min-height:2.3rem;padding:0 .7rem;font-size:.85rem}
+.dd-compact .dd-option{min-height:2.2rem;font-size:.85rem}
+@media(pointer:coarse){.dd-trigger,.category-picker-trigger{min-height:2.75rem}.dd-option{min-height:2.75rem}}
+@media(prefers-reduced-motion:reduce){.dd-chevron,.category-picker-trigger svg{transition:none}}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
 .switch-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem;border-radius:1rem;background:color-mix(in oklch,var(--muted) 70%,transparent)}
 .switch-row small{display:block;color:var(--muted-fg);font-size:.78rem}
@@ -137,8 +167,8 @@ main{flex:1;min-width:0;padding:2.5rem 0 4rem}
 .empty{padding:1.5rem 1rem;border:1px dashed var(--border);border-radius:1rem;text-align:center;font-size:.88rem;color:var(--muted-fg)}
 
 /* Today: the daily stack */
-.stack{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);grid-template-areas:"hero side" "overdue side" "week week";gap:1.25rem;align-items:start}
-.stack .hero{grid-area:hero}.stack .overdue-card{grid-area:overdue}.stack .week-card{grid-area:week}.stack .cw-f-home-column{grid-area:side;min-width:0}
+.stack{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);grid-template-areas:"hero friends" "today overdue" "week week";gap:1.25rem;align-items:start}
+.stack .hero{grid-area:hero}.stack .today-card{grid-area:today}.stack .overdue-card{grid-area:overdue}.stack .week-card{grid-area:week}.stack .cw-f-card{grid-area:friends;min-width:0}
 .week-card{min-width:0}
 .week-top{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem 1.5rem;flex-wrap:wrap;margin:.35rem 0 1.1rem}
 .week-stat strong{display:block;font-family:var(--font-display);font-weight:300;font-size:1.6rem;line-height:1.15}
@@ -200,21 +230,28 @@ button.week-bar.is-today:hover .week-bar-fill{background:var(--primary-dark)}
 @keyframes flame-flicker{0%,100%{transform:scale(1) rotate(0)}30%{transform:scale(1.05,1.08) rotate(-2deg)}60%{transform:scale(.98,1.03) rotate(2deg)}}
 @media (prefers-reduced-motion:reduce){.streak-bar.is-lit .flame{animation:none}}
 @media (max-width:30rem){.streak-bar{padding:.8rem 1.25rem}}
+/* Daily Snapshot on phones: a compact one-line stat, and the streak strip joins the flow so nothing overlaps.
+   Scoped to Whimsy off — Whimsy themes ship their own tuned phone layout. */
+@media (max-width:640px){
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero{min-height:0;padding:1.25rem 1.25rem 1.4rem}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero small{font-size:.75rem}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero-stat{top:1.1rem;right:1.25rem;display:flex;align-items:baseline;gap:.4rem}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero-stat strong{font-size:1.5rem}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero h2{margin:1rem 0 .35rem;max-width:none;font-size:1.55rem;line-height:1.2}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero p{font-size:.88rem;line-height:1.45}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero.has-streak{padding-bottom:0}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero .streak-bar{position:static;margin:1.1rem -1.25rem 0;padding:.7rem 1.25rem;gap:.1rem .5rem}
+  html:is(:not([data-whimsy]),[data-whimsy=off]) .hero .streak-hint{order:3;flex-basis:100%;margin-left:2rem;font-size:.78rem}
+}
 
-/* Keep the desktop dashboard columns balanced; only their contents scroll. */
+/* Keep the desktop dashboard balanced; only the lists inside each card scroll.
+   Row 1: Daily snapshot + Friends.  Row 2: Today + Overdue.  Row 3: This week. */
 @media (min-width:861px){
   .stack{grid-template-rows:14rem 20rem auto}
   .stack .hero{height:14rem;min-height:0}
-  .stack .overdue-card{display:flex;flex-direction:column;height:20rem;min-height:0}
-  .stack .overdue-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  .stack .overdue-card>.task-list.has-tasks,.stack .cw-f-home-column .today-card>.task-list.has-tasks{align-content:start}
-  .stack .cw-f-home-column{height:35.25rem;grid-template-rows:14rem 20rem;align-content:stretch}
-  .stack .cw-f-home-column .today-card,.stack .cw-f-home-column .cw-f-card{display:flex;flex-direction:column;height:100%;min-height:0}
-  .stack .cw-f-home-column .today-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  .stack .cw-f-home-column .cw-f-card{overflow:hidden}
-  .stack .cw-f-home-column .cw-f-home-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
-  .stack .cw-f-home-column .cw-f-card-actions,.stack .cw-f-home-column .cw-f-request{flex:none}
-  .stack .cw-f-home-column .cw-f-request{margin:.3rem 0 .55rem}
+  .stack .today-card,.stack .overdue-card{display:flex;flex-direction:column;height:20rem;min-height:0}
+  .stack .today-card>.task-list,.stack .overdue-card>.task-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .stack .today-card>.task-list.has-tasks,.stack .overdue-card>.task-list.has-tasks{align-content:start}
 }
 
 /* To-do lists */
@@ -250,14 +287,6 @@ button.week-bar.is-today:hover .week-bar-fill{background:var(--primary-dark)}
 .sort-direction[hidden]{display:none}
 .sort-direction:hover{background:var(--muted);border-color:color-mix(in oklch,var(--primary) 45%,var(--border))}
 .sort-direction:focus-visible{outline:2px solid color-mix(in oklch,var(--primary) 58%,transparent);outline-offset:1px}
-@media(max-width:560px){
-  .list-head{flex-wrap:wrap}
-  .list-toggle{flex:1 1 calc(100% - 8rem)}
-  .list-sort{order:2;margin-left:2.4rem;flex:1 1 auto}
-  .sort-trigger{min-width:0;flex:1}
-  .sort-menu{left:0;right:auto}
-  .list-head>[data-rename],.list-head>[data-delete]{order:1}
-}
 
 /* Calendar */
 .cal{padding:1.25rem}
@@ -310,8 +339,55 @@ button.week-bar.is-today:hover .week-bar-fill{background:var(--primary-dark)}
 .toast{position:fixed;left:50%;bottom:1.5rem;z-index:80;transform:translate(-50%,1rem);padding:.7rem 1.1rem;border-radius:.9rem;background:var(--fg);color:var(--bg);font-size:.88rem;font-weight:400;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
+/* Canvas update popups — same card language as the home-page Canvas reminder. */
+.cw-update-wrap{display:grid;grid-template-rows:1fr;padding-top:1.1rem;margin-bottom:-1.1rem}
+.cw-update-wrap>.container{min-height:0}
+.cw-update-wrap.is-entering,.cw-update-wrap.is-leaving{overflow:hidden}
+.cw-update-wrap.is-entering .cw-update-inner,.cw-update-wrap.is-leaving .cw-update-inner{padding:.5rem;margin:-.5rem}
+.cw-update-wrap.is-entering{animation:cw-update-rows .55s cubic-bezier(.2,.8,.2,1) both}
+.cw-update-wrap.is-leaving{animation:cw-update-rows .35s cubic-bezier(.4,0,.6,1) reverse both;pointer-events:none}
+@keyframes cw-update-rows{from{grid-template-rows:0fr;padding-top:0;margin-bottom:0}to{grid-template-rows:1fr;padding-top:1.1rem;margin-bottom:-1.1rem}}
+.cw-update{position:relative;display:flex;align-items:center;gap:1rem;padding:1rem 3rem 1rem 1rem;border-radius:1.5rem;background:var(--card);box-shadow:var(--shadow-card)}
+.is-entering .cw-update{animation:cw-update-pop .55s .1s cubic-bezier(.2,.9,.25,1) both}
+.is-leaving .cw-update{animation:cw-update-away .3s ease-in both}
+@keyframes cw-update-pop{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+@keyframes cw-update-away{to{opacity:0;transform:translateY(-8px)}}
+.cw-update-icon{position:relative;flex:none;display:grid;place-items:center;width:3.2rem;height:3.2rem;border-radius:1.05rem;background:var(--primary);color:var(--primary-fg);transform:rotate(-6deg)}
+.cw-update-icon svg{width:1.7rem;height:1.7rem}
+.cw-update-count{position:absolute;top:-.5rem;right:-.55rem;display:grid;place-items:center;min-width:1.4rem;height:1.4rem;padding:0 .35rem;border-radius:999px;background:var(--card);color:var(--primary-dark);border:2px solid var(--primary);font-size:.72rem;font-weight:600;line-height:1;transform:rotate(6deg)}
+.is-entering .cw-update-icon{animation:cw-update-icon .7s .35s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes cw-update-icon{from{opacity:0;transform:scale(.5) rotate(-20deg)}to{opacity:1;transform:rotate(-6deg)}}
+.cw-update-copy{flex:1;min-width:0;display:grid;gap:.15rem}
+.cw-update-copy strong{font-family:var(--font-display);font-size:1.05rem;font-weight:400}
+.cw-update-copy span{font-size:.86rem;color:var(--muted-fg)}
+.cw-update-cta{flex:none;white-space:nowrap}
+.cw-update-cta i{display:inline-block;font-style:normal;transition:transform .2s}
+.cw-update-cta:hover i{transform:translateX(3px)}
+.cw-update-x{position:absolute;top:.5rem;right:.5rem}
+
+.cw-sync-card{position:fixed;z-index:75;bottom:1.5rem;right:1.25rem;display:flex;align-items:center;gap:.85rem;width:min(23rem,calc(100vw - 2rem));padding:.9rem 2.7rem .9rem .9rem;border-radius:1.25rem;background:var(--card);color:var(--fg);box-shadow:var(--shadow-card),0 14px 36px oklch(.3 .03 var(--hue)/.14);opacity:0;transform:translateY(.75rem);transition:opacity .3s,transform .3s cubic-bezier(.2,.9,.25,1)}
+.cw-sync-card.show{opacity:1;transform:none}
+.cw-sync-icon{flex:none;display:grid;place-items:center;width:2.6rem;height:2.6rem;border-radius:.9rem;background:var(--primary);color:var(--primary-fg);transform:rotate(-6deg)}
+.cw-sync-icon svg{width:1.4rem;height:1.4rem}
+.cw-sync-copy{flex:1;min-width:0;display:grid;gap:.1rem}
+.cw-sync-copy strong{font-family:var(--font-display);font-size:.98rem;font-weight:400}
+.cw-sync-copy span{font-size:.82rem;color:var(--muted-fg)}
+.cw-sync-x{position:absolute;top:.45rem;right:.45rem}
+
+@media(max-width:640px){
+  .cw-update{flex-wrap:wrap;padding-right:2.6rem}
+  .cw-update-copy{flex-basis:calc(100% - 5rem)}
+  .cw-update-cta{margin-left:4.2rem}
+  .cw-sync-card{bottom:calc(5.5rem + env(safe-area-inset-bottom,0px));right:1rem;left:1rem;width:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  .cw-update-wrap.is-entering,.is-entering .cw-update,.is-entering .cw-update-icon{animation:none}
+  .cw-update-wrap.is-leaving,.is-leaving .cw-update{animation-duration:.01s}
+  .cw-sync-card{transition:opacity .01s}
+}
+
 @media (max-width:860px){
-  .stack{grid-template-columns:minmax(0,1fr);grid-template-areas:"hero" "side" "overdue" "week"}
+  .stack{grid-template-columns:minmax(0,1fr);grid-template-areas:"hero" "today" "overdue" "week" "friends"}
   .two-col{grid-template-columns:1fr}
   .auth{grid-template-columns:1fr}.auth-aside{padding:2rem 1.5rem}
 }
@@ -629,14 +705,20 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 @keyframes cw-trophy-float{0%,65%,100%{transform:translateY(0)}80%{transform:translateY(-2px)}}
 @media(prefers-reduced-motion:reduce){.cw-streak-best.has-record .cw-streak-trophy{animation:none}}
 
-/* Mobile sort controls: dedicated row and comfortable tap targets. */
+/* Mobile list header: one tidy row (grip · title · edit · delete). Sort is a compact pill underneath, shown only while the list is open. */
 @media(max-width:560px){
-  .list-head .list-sort{flex:1 0 100%;width:100%;margin-left:0;min-width:0;margin-top:.3rem}
-  .list-head .sort-trigger{min-height:44px;height:auto;min-width:0;padding:.55rem .75rem}
+  .list-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;column-gap:.2rem;row-gap:.2rem;align-items:center}
+  .list-head>.list-drag{grid-area:1/1;width:2.4rem;height:2.75rem}
+  .list-head>.list-toggle{grid-area:1/2;min-width:0}
+  .list-head .list-toggle h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .list-head>[data-rename]{grid-area:1/3}
+  .list-head>[data-delete]{grid-area:1/4}
+  .list-head>[data-rename],.list-head>[data-delete]{width:2.75rem;height:2.75rem}
+  .list-head .list-sort{grid-area:2/2/3/-1;justify-self:start;max-width:100%;min-width:0;margin:0 0 .2rem}
+  .list-card:has(.list-toggle[aria-expanded=false]) .list-sort{display:none}
+  .list-head .sort-trigger{min-width:0;min-height:2.5rem;height:auto;padding:.4rem .75rem;gap:.5rem;font-size:.82rem;background:color-mix(in oklch,var(--primary) 5%,var(--card))}
   .list-head .sort-trigger>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .list-head .sort-menu{left:0;right:0;width:100%;min-width:0;max-width:100%;box-sizing:border-box}
-  .list-head .sort-option{min-height:44px;white-space:normal}
-  .list-head .sort-direction{width:44px;height:44px;flex:none}
-  .list-head>[data-rename],.list-head>[data-delete]{min-width:44px;min-height:44px}
-  .list-head .list-toggle h2{overflow-wrap:anywhere}
+  .list-head .sort-menu{left:0;right:auto;width:max-content;min-width:12rem;max-width:calc(100vw - 3.5rem);box-sizing:border-box}
+  .list-head .sort-option{min-height:2.75rem;white-space:normal}
+  .list-head .sort-direction{width:2.5rem;height:2.5rem;flex:none}
 }

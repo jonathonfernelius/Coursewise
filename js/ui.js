@@ -14,6 +14,8 @@
     grip: svg('<circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>'),
     calendar: svg('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/>'),
     close: svg('<path d="m18 6-12 12M6 6l12 12"/>'),
+    calendarPlus: svg('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18M12 13v5M9.5 15.5h5"/>'),
+    calendarCheck: svg('<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 9.5h18"/><path d="m9 15.5 2 2 4-4"/>'),
     user: svg('<circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>')
   };
 
@@ -22,6 +24,57 @@
     if (!toastEl) { toastEl = document.createElement("div"); toastEl.className = "toast"; toastEl.setAttribute("role", "status"); document.body.append(toastEl); }
     toastEl.textContent = msg; toastEl.classList.add("show");
     clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2400);
+  }
+
+  /* Canvas update popups. Both reuse the site's card language (rounded primary icon tile, soft shadow). */
+  const calmMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let syncCardEl, syncCardTimer;
+
+  // Floating card, e.g. after due dates are refreshed from Canvas. Closes itself; hover or focus keeps it open.
+  function updateCard({ title, body, duration = 6000 }) {
+    clearTimeout(syncCardTimer);
+    syncCardEl?.remove();
+    const card = syncCardEl = document.createElement("aside");
+    card.className = "cw-sync-card";
+    card.setAttribute("role", "status");
+    card.innerHTML = `<span class="cw-sync-icon" aria-hidden="true">${icons.calendarCheck}</span>
+      <div class="cw-sync-copy"><strong>${esc(title)}</strong><span>${esc(body)}</span></div>
+      <button type="button" class="icon-btn cw-sync-x" aria-label="Dismiss">${icons.close}</button>`;
+    document.body.append(card);
+    const close = () => {
+      clearTimeout(syncCardTimer);
+      card.classList.remove("show");
+      setTimeout(() => { card.remove(); if (syncCardEl === card) syncCardEl = null; }, calmMotion() ? 20 : 320);
+    };
+    const arm = ms => { clearTimeout(syncCardTimer); syncCardTimer = setTimeout(close, ms); };
+    card.querySelector(".cw-sync-x").onclick = close;
+    card.addEventListener("mouseenter", () => clearTimeout(syncCardTimer));
+    card.addEventListener("mouseleave", () => arm(2500));
+    card.addEventListener("focusin", () => clearTimeout(syncCardTimer));
+    card.addEventListener("focusout", () => arm(2500));
+    requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add("show")));
+    arm(duration);
+  }
+
+  // Banner shown once per session when Canvas has items you haven't reviewed yet. It sits outside #main so page re-renders don't remove it.
+  function canvasNotice(count) {
+    document.querySelector("#cw-auto-canvas-notice")?.remove();
+    const wrap = document.createElement("div");
+    wrap.id = "cw-auto-canvas-notice";
+    wrap.className = "cw-update-wrap is-entering";
+    wrap.innerHTML = `<div class="container"><div class="cw-update-inner"><aside class="cw-update" role="status">
+      <span class="cw-update-icon" aria-hidden="true">${icons.calendarPlus}<b class="cw-update-count">${count}</b></span>
+      <div class="cw-update-copy"><strong>${count} new Canvas ${count === 1 ? "item" : "items"} to review</strong><span>Choose what to add to your lists. Nothing is imported until you say so.</span></div>
+      <a class="btn btn-primary cw-update-cta" href="profile.html#canvas">Review items <i aria-hidden="true">→</i></a>
+      <button type="button" class="icon-btn cw-update-x" aria-label="Hide this notice">${icons.close}</button>
+    </aside></div></div>`;
+    document.querySelector("#main")?.before(wrap);
+    wrap.addEventListener("animationend", e => { if (e.target === wrap) wrap.classList.remove("is-entering"); });
+    wrap.querySelector(".cw-update-x").onclick = () => {
+      wrap.classList.remove("is-entering");
+      wrap.classList.add("is-leaving");
+      setTimeout(() => wrap.remove(), calmMotion() ? 20 : 400);
+    };
   }
 
   async function run(action, element) {
@@ -203,7 +256,7 @@
       <div class="field"><label for="f-title">Task</label><input id="f-title" required value="${esc(task?.title)}" placeholder="What needs to get done?"></div>
       <div class="grid-2">
         <div class="field"><span class="field-label" id="f-cat-label">Category</span>${categoryPickerMarkup(initialCategory)}</div>
-        <div class="field"><label for="f-list">List</label><select id="f-list">${listOptions(task?.listId || listId)}</select></div>
+        <div class="field"><label for="f-list">List</label><select id="f-list" data-dd>${listOptions(task?.listId || listId)}</select></div>
       </div>
       <div class="grid-2">
         <div class="field"><label for="f-due">Due date</label><input id="f-due" type="date" value="${task?.due || due || ""}"></div>
@@ -227,10 +280,10 @@
           </div>
         </div>
       </div>
-      <div class="field"><label for="f-rep">Repeat</label><select id="f-rep">${repOptions()}</select>
+      <div class="field"><label for="f-rep">Repeat</label><select id="f-rep" data-dd>${repOptions()}</select>
         <small class="hint${showRepeatHint(repeatVal) ? "" : " hide"}" id="rep-hint">Marking it done adds the next one automatically.</small></div>
       <div class="switch-row"><label for="f-rem">Schedule Reminder</label><span class="switch"><input id="f-rem" type="checkbox"${r ? " checked" : ""}><span></span></span></div>
-      <p class="muted">Saved for later; notifications are not enabled yet.</p><div class="field${r ? "" : " hide"}" id="rem-wrap"><label for="f-remwhen">Remind me</label><select id="f-remwhen">${options([["15m", "15 minutes before"], ["1h", "1 hour before"], ["1d", "1 day before"], ["1w", "1 week before"]], r || "1h")}</select></div>
+      <p class="muted">Saved for later; notifications are not enabled yet.</p><div class="field${r ? "" : " hide"}" id="rem-wrap"><label for="f-remwhen">Remind me</label><select id="f-remwhen" data-dd>${options([["15m", "15 minutes before"], ["1h", "1 hour before"], ["1d", "1 day before"], ["1w", "1 week before"]], r || "1h")}</select></div>
       <div class="dialog-actions"><button class="btn btn-primary">${task ? "Update" : "Save task"}</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
       ${task ? `<button type="button" class="delete-link" id="f-del">${icons.trash} Delete task</button>` : ""}</form>`);
     const q = id => d.querySelector("#" + id);
@@ -404,7 +457,7 @@
         ${eventTimePickerMarkup("e-start-time", "Start time (optional)", event?.time)}
         ${eventTimePickerMarkup("e-end-time", "End time (optional)", event?.endTime)}
       </div>
-      <div class="field"><label for="e-repeat">Repeat</label><select id="e-repeat">${repeatOptions()}</select>
+      <div class="field"><label for="e-repeat">Repeat</label><select id="e-repeat" data-dd>${repeatOptions()}</select>
         <small class="hint${repeatVal && (typeof repeatVal !== "object" || !repeatVal.end || repeatVal.end.type === "never") ? "" : " hide"}" id="e-repeat-hint">This event appears on each matching date.</small></div>
       <div class="switch-row"><div><strong>Notifications</strong><small>Coming soon. Notifications are not enabled yet.</small></div>
         <span class="switch"><input type="checkbox" disabled aria-label="Notifications coming soon"><span></span></span></div>
@@ -585,10 +638,11 @@
           await T.reload();
           rerender();
 
-          toast(
-            `${sync.datesUpdated} Canvas due date` +
-            `${sync.datesUpdated === 1 ? '' : 's'} updated`
-          );
+          const n = sync.datesUpdated;
+          updateCard({
+            title: n === 1 ? 'Canvas due date updated' : 'Canvas due dates updated',
+            body: `${n} ${n === 1 ? 'assignment' : 'assignments'} synced with Canvas.`
+          });
         }
       }
 
@@ -624,32 +678,7 @@
       if (!fresh.length) return;
 
       // Show a reminder instead of importing automatically.
-      document.querySelector(
-        '#cw-auto-canvas-notice'
-      )?.remove();
-
-      const notice = document.createElement('aside');
-      notice.id = 'cw-auto-canvas-notice';
-      notice.setAttribute('role', 'status');
-
-      notice.style.cssText =
-        'margin:12px auto;padding:14px 18px;' +
-        'max-width:1100px;' +
-        'border:1px solid var(--border,#ccc);' +
-        'border-radius:12px';
-
-      const msg = document.createElement('span');
-      msg.textContent =
-        `${fresh.length} new Canvas item` +
-        `${fresh.length === 1 ? '' : 's'} to review. `;
-
-      const link = document.createElement('a');
-      link.href = 'profile.html#canvas';
-      link.textContent = 'Preview and categorize assignments';
-
-      notice.append(msg, link);
-
-      document.querySelector('#main')?.prepend(notice);
+      canvasNotice(fresh.length);
 
     } catch (error) {
       // Canvas errors never prevent Coursewise from opening.
@@ -701,5 +730,5 @@
     void checkCanvasOnSessionStart(rerender);
   }
 
-  window.Tidy.ui = { run, icons, toast, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
+  window.Tidy.ui = { run, icons, toast, updateCard, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
 })();

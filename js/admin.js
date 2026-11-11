@@ -1,7 +1,8 @@
 /* Admin OKR dashboards.
  * The browser requests aggregate results only. Supabase checks admin permission
  * inside each protected RPC, so private task rows and Canvas credentials never
- * need to be loaded into this page.
+ * need to be loaded into this page. The one exception is the Feedback group,
+ * which reads Whimsy theme ideas that members chose to send (RLS admin policy).
  */
 (() => {
   'use strict';
@@ -39,6 +40,13 @@
       title: 'Tasks completed vs. overdue',
       icon: '✓',
       description: 'Compare tasks completed during the selected period with the overdue task backlog.'
+    },
+    {
+      id: 'whimsy-ideas',
+      category: 'Feedback',
+      title: 'Whimsy ideas',
+      icon: '✦',
+      description: 'Theme ideas members sent from the suggestion box in Profile settings.'
     }
   ];
 
@@ -83,10 +91,12 @@
   }
 
   function renderGoalLists() {
-    ['Acquisition', 'Retention'].forEach(category => {
-      const destination = category === 'Acquisition'
-        ? $('#acquisition-list')
-        : $('#retention-list');
+    ['Acquisition', 'Retention', 'Feedback'].forEach(category => {
+      const destination = {
+        Acquisition: $('#acquisition-list'),
+        Retention: $('#retention-list'),
+        Feedback: $('#feedback-list')
+      }[category];
 
       destination.innerHTML = goals
         .filter(goal => goal.category === category)
@@ -131,6 +141,7 @@
       'completed-overdue': 'Overdue means an incomplete task past its due date. Date-only tasks become overdue the next day; tasks with a due time become overdue after that time. Active users added or completed a task in the last 30 days.',
       'completed-per-day': 'A daily completer is a registered account that completed at least one task that day. Daily completion rate divides daily completers by accounts registered by that day. The active-user filter uses task additions or completions in the last 30 days.',
       'new-accounts': 'New accounts are counted using the existing UserCreationDate field. Growth compares this range with the previous period of the same length.',
+      'whimsy-ideas': 'Ideas are shown newest first, up to 200 per range. Members see only their own submissions; this view is limited to admins.',
       'canvas-connection': 'Canvas adoption is estimated from accounts with at least one imported Canvas assignment on record. This confirms Canvas use; it does not count a connection that has not imported an assignment.'
     };
     $('#definition-note').textContent = definitions[goal.id];
@@ -411,6 +422,34 @@
     updateTrackingNote(data);
   }
 
+  function relativeTime(iso) {
+    const seconds = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
+    const units = [['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60]];
+    const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+    for (const [unit, size] of units) {
+      if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
+    }
+    return 'just now';
+  }
+
+  function renderWhimsyIdeas(rows) {
+    const people = new Set(rows.map(row => row.auth_user_id)).size;
+    $('#ideas-total').textContent = formatNumber(rows.length);
+    $('#ideas-people').textContent = formatNumber(people);
+    $('#ideas-latest').textContent = rows.length ? relativeTime(rows[0].created_at) : '—';
+    $('#whimsy-ideas-list').innerHTML = rows.length
+      ? rows.map(row => [
+        '<li class="idea-row"><p>', escapeHtml(row.suggestion), '</p>',
+        '<time datetime="', escapeHtml(row.created_at), '" title="',
+        escapeHtml(new Date(row.created_at).toLocaleString()), '">',
+        escapeHtml(relativeTime(row.created_at)), '</time></li>'
+      ].join('')).join('')
+      : '<li class="idea-empty">No ideas in this range yet. They will appear here when members use the suggestion box.</li>';
+    $('#ideas-footnote').textContent = rows.length >= 200
+      ? 'Showing the 200 most recent ideas in this range.'
+      : '';
+  }
+
   function clearCurrentMetrics() {
     const chartHosts = {
       'completed-overdue': ['#volume-chart', '#ratio-chart'],
@@ -418,6 +457,7 @@
       'new-accounts': ['#new-accounts-chart', '#total-accounts-chart'],
       'canvas-connection': ['#canvas-chart']
     };
+    if (selectedGoal === 'whimsy-ideas') $('#whimsy-ideas-list').innerHTML = '';
 
     (chartHosts[selectedGoal] || []).forEach(selector => {
       $(selector).innerHTML = chartEmpty('Analytics setup is required.');
@@ -449,6 +489,17 @@
         return;
       }
 
+      if (goalId === 'whimsy-ideas') {
+        const since = new Date(Date.now() - filters.days * 86400000).toISOString();
+        const ideas = await getData(db.from('coursewise_whimsy_suggestions')
+          .select('id,suggestion,created_at,auth_user_id')
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(200));
+        if (thisRequest === requestNumber) renderWhimsyIdeas(ideas || []);
+        return;
+      }
+
       if (goalId === 'completed-overdue') {
         const activity = await getData(db.rpc('coursewise_admin_activity', {
           p_days: filters.days,
@@ -472,6 +523,10 @@
     } catch (error) {
       if (thisRequest !== requestNumber) return;
       clearCurrentMetrics();
+      if (goalId === 'whimsy-ideas') {
+        showError('Ideas unavailable: ' + error.message + ' Apply supabase/migrations/20261110000000_whimsy_suggestions.sql in the Supabase SQL Editor.');
+        return;
+      }
       showError(
         'Analytics unavailable: ' + error.message +
         ' Apply supabase/admin-okr-analytics.sql in the Supabase SQL Editor. ' +
@@ -493,7 +548,7 @@
   }
 
   function registerEvents() {
-    ['#acquisition-list', '#retention-list'].forEach(selector => {
+    ['#acquisition-list', '#retention-list', '#feedback-list'].forEach(selector => {
       $(selector).addEventListener('click', event => {
         const button = event.target.closest('[data-okr]');
         if (button) selectGoal(button.dataset.okr);
