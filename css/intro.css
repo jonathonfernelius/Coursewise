@@ -1,0 +1,52 @@
+/* Getting-started guide on Today. Uses the shared tokens, so accent themes and dark mode carry through. */
+.cw-intro{margin-bottom:1.1rem}
+.cw-intro.is-entering{animation:cw-intro-in .5s cubic-bezier(.2,.8,.2,1) both}
+.cw-intro.is-leaving{animation:cw-intro-out .28s ease-in both;pointer-events:none}
+@keyframes cw-intro-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes cw-intro-out{to{opacity:0;transform:translateY(-8px)}}
+
+.cw-intro-head{position:relative;display:flex;align-items:flex-start;gap:1rem;padding-right:2.4rem}
+.cw-intro-head>div{flex:1;min-width:0}
+.cw-intro-head h2{font-size:1.35rem}
+.cw-intro-head p{margin-top:.25rem;font-size:.88rem;color:var(--muted-fg)}
+.cw-intro-count{flex:none;margin-top:.2rem;padding:.15rem .65rem;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-size:.78rem;font-weight:500;font-variant-numeric:tabular-nums}
+.cw-intro-x{position:absolute;top:-.35rem;right:-.45rem;font-size:1.2rem;line-height:1}
+
+.cw-intro-bar{height:.3rem;margin:1rem 0 .4rem;border-radius:999px;background:var(--muted);overflow:hidden}
+.cw-intro-bar i{display:block;height:100%;width:calc(var(--p) * 100%);border-radius:inherit;background:var(--primary);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+
+.cw-intro-steps{list-style:none;margin:0;padding:0;display:grid}
+.cw-intro-step{display:flex;align-items:center;gap:.9rem;padding:.85rem 0;border-top:1px solid var(--border)}
+.cw-intro-step:first-child{border-top:0}
+.cw-intro-mark{flex:none;display:grid;place-items:center;width:2rem;height:2rem;border-radius:50%;border:1.5px solid var(--border);color:var(--muted-fg);font-size:.85rem;font-weight:500;background:var(--card)}
+.cw-intro-mark svg{width:1rem;height:1rem}
+.cw-intro-step.is-next .cw-intro-mark{border-color:var(--primary);color:var(--primary-dark)}
+.cw-intro-step.is-done .cw-intro-mark{border-color:var(--primary);background:var(--primary);color:var(--primary-fg)}
+.cw-intro-step.just-done .cw-intro-mark{animation:cw-intro-pop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes cw-intro-pop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+
+.cw-intro-copy{flex:1;min-width:0;display:grid;gap:.1rem}
+.cw-intro-copy strong{font-weight:500;font-size:.95rem}
+.cw-intro-text{font-size:.85rem;color:var(--muted-fg)}
+.cw-intro-step.is-done strong,.cw-intro-step.is-skipped strong{font-weight:400;color:var(--muted-fg)}
+
+.cw-intro-actions{flex:none;display:flex;align-items:center;gap:.9rem}
+.cw-intro-skip,.cw-intro-undo{border:0;background:none;padding:.3rem 0;font-size:.85rem}
+.cw-intro-skip{color:var(--muted-fg)}
+.cw-intro-skip.is-spacer{visibility:hidden}
+.cw-intro-skip:hover{color:var(--fg)}
+.cw-intro-undo{color:var(--primary-dark);font-weight:400}
+
+.cw-intro.is-finished .cw-intro-head{align-items:center;padding-right:0}
+
+@media(max-width:640px){
+  .cw-intro-step{flex-wrap:wrap;align-items:flex-start}
+  .cw-intro-copy{flex-basis:calc(100% - 3rem)}
+  .cw-intro-actions{margin-left:2.9rem}
+  .cw-intro-skip.is-spacer{display:none}
+  .cw-intro.is-finished .cw-intro-head{flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){
+  .cw-intro.is-entering,.cw-intro.is-leaving,.cw-intro-step.just-done .cw-intro-mark{animation:none}
+  .cw-intro-bar i{transition:none}
+}

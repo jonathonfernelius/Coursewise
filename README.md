@@ -45,7 +45,8 @@ The Today page is the main dashboard and gives users a quick overview of their d
 5. **Overdue:** Shows unfinished tasks with deadlines that have already passed.
 6. **This week:** Displays a seven-day overview with task counts, a small visual chart, and an agenda that can be grouped **By day** or **By list**.
 7. **Add task:** Allows users to create a task without leaving the dashboard.
-8. **Canvas reminder:** If Canvas is not connected, the dashboard can display a reminder linking to the connection setup. When Canvas is connected, a banner appears if there are new items to review, and a small card confirms when due dates were synced.
+8. **Getting started guide:** New accounts see three setup steps at the top of Today (connect Canvas, add a first task, add a friend). Each step checks itself off when it's done, Canvas and friends can be skipped, and the guide can be closed or brought back from **Profile → Preferences**. Run `supabase/migrations/20261111000000_intro_guide.sql` so the guide is remembered across devices.
+9. **Canvas reminder:** If Canvas is not connected, the dashboard can display a reminder linking to the connection setup. When Canvas is connected, a banner appears if there are new items to review, and a small card confirms when due dates were synced.
 
 **To-do lists**
 

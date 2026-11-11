@@ -491,6 +491,7 @@
     document.querySelectorAll('.cw-f-card').forEach(
       c => c.innerHTML=cardBody()
     );
+    document.dispatchEvent(new CustomEvent('coursewise:friends'));
 
     const pending=count('request')+(Number(data.unread)||0);
     document.querySelectorAll('.cw-f-badge').forEach(b=>{
@@ -1013,6 +1014,8 @@
 
   window.CoursewiseFriends={
     mount,
-    card:()=>`<section class="card cw-f-card" aria-label="Friends">${cardBody()}</section>`
+    card:()=>`<section class="card cw-f-card" aria-label="Friends">${cardBody()}</section>`,
+    // Friends plus requests you've sent, for the getting-started guide.
+    summary:()=>loaded?{friends:count('friend'),pending:count('pending')}:null
   };
 })();

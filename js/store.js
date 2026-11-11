@@ -248,7 +248,7 @@
 
   const db = window.tidyClient;
   const tones = ["sky", "grape", "sun", "mint", "rose", "slate", "teal", "coral", "indigo", "lime"];
-  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], events: [], canvasConnected: false, completedToday: 0, streak: null });
+  const empty = () => ({ signedIn: false, user: { first: '', last: '', email: '', username: '' }, prefs: { weekStart: 0, showDone: false, theme: 'green' }, categories: [], lists: [], tasks: [], events: [], canvasConnected: false, completedToday: 0, streak: null, introDone: true });
   let state = empty(), authUser, owner;
   const requireDb = () => { if (!db) throw new Error('Could not load Supabase. Check your connection and reload.'); };
   async function result(query) { const {data, error} = await query; if (error) throw new Error(error.message); return data; }
@@ -311,10 +311,21 @@
     if (state.prefs) state.prefs.appearance = validMode(e.detail?.mode);
     void saveAppearance(e.detail?.mode);
   });
+  // The getting-started guide is saved on the account so it shows once, not once per device.
+  const introKey = kind => `cw-intro${kind}:${authUser?.id || ''}`;
+  function introDone(saved, hasContent) {
+    if (saved !== undefined) return saved !== null;
+    // Until the column exists, decide once on this device: only accounts with nothing in them see the guide.
+    try {
+      let v = localStorage.getItem(introKey(''));
+      if (v !== 'done' && v !== 'open') { v = hasContent ? 'done' : 'open'; localStorage.setItem(introKey(''), v); }
+      return v === 'done';
+    } catch { return hasContent; }
+  }
   async function load() {
     if (!owner) throw new Error('Please log in again.');
     // Keep the prior screen intact if any request fails.
-    const [profile, settings, categories, lists, tasks, events, streak] = await Promise.all([
+    const [profile, settings, categories, lists, tasks, events, streak, introSaved] = await Promise.all([
       result(db.from('User').select('UserID,FirstName,LastName,Username').eq('UserID', owner).single()),
       loadSettings(),
       allRows('Categories','CategoryID,DisplayName,DisplayColor','CategoryID'),
@@ -325,7 +336,10 @@
           .eq('auth_user_id', authUser.id).order('event_date').order('event_time'))
         : Promise.resolve([]),
       // Streaks are a bonus: if the migration is not applied yet, the rest of the app still loads.
-      Promise.resolve(db.rpc('coursewise_my_streak')).then(r => r.error ? null : r.data, () => null)
+      Promise.resolve(db.rpc('coursewise_my_streak')).then(r => r.error ? null : r.data, () => null),
+      // Getting-started guide: undefined means the IntroDoneAt column has not been added yet.
+      Promise.resolve(db.from('Settings').select('IntroDoneAt').eq('UserID', owner).single())
+        .then(r => r.error ? undefined : (r.data?.IntroDoneAt ?? null), () => undefined)
     ]);
     if (settings.TimeFormat === '12' || settings.TimeFormat === '24') {
       timeFormat = settings.TimeFormat;
@@ -345,7 +359,8 @@
         .sort((a,b) => a.date.localeCompare(b.date) || (a.time || '99:99').localeCompare(b.time || '99:99') || a.title.localeCompare(b.title)),
       canvasConnected: false,
       completedToday: Number(streak?.completed_today) || 0,
-      streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null };
+      streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null,
+      introDone: introDone(introSaved, tasks.length > 0 || lists.length > 0) };
     if (window.CoursewiseTheme) window.CoursewiseTheme.apply(state.prefs.theme);
     else document.documentElement.dataset.theme = state.prefs.theme;
     // The account's saved light/dark mode wins. If the account has none yet, keep this device's mode and save it.
@@ -410,6 +425,21 @@
     async changePassword(password) { requireDb(); await result(db.auth.updateUser({password})); },
     async updateUser(p) {
       await write(db.from('User').update({FirstName:p.first,LastName:p.last,Username:p.username}).eq('UserID',owner).select('UserID').single());
+    },
+    async setIntroDone(done) {
+      state.introDone = !!done;
+      try {
+        localStorage.setItem(introKey(''), done ? 'done' : 'open');
+        if (!done) localStorage.removeItem(introKey('-skips'));
+      } catch {}
+      // Best effort, like Appearance: the device copy above keeps working if the column is missing.
+      try { await db.from('Settings').update({ IntroDoneAt: done ? new Date().toISOString() : null }).eq('UserID', owner); } catch {}
+    },
+    introSkips() { try { return JSON.parse(localStorage.getItem(introKey('-skips')) || '[]'); } catch { return []; } },
+    setIntroSkip(step, skipped) {
+      const next = new Set(this.introSkips());
+      skipped ? next.add(step) : next.delete(step);
+      try { localStorage.setItem(introKey('-skips'), JSON.stringify([...next])); } catch {}
     },
     async setPrefs(p) {
       if ('timeFormat' in p) {

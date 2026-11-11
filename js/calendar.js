@@ -76,7 +76,7 @@
         ${table(todays, { time: true, empty: "Nothing due today." })}</section>
 
       <section class="card table-card"><div class="section-head"><h2>Other tasks</h2><span class="count">${undated.length}</span></div>
-        ${table(undated, { time: false, empty: "Every task has a date." })}</section>
+        ${table(undated, { time: false, empty: S.tasks.length ? "Every task has a date." : "Tasks without a due date show up here." })}</section>
 
       <section class="card table-card upcoming-events-card">
         <div class="section-head"><h2>Upcoming events</h2><span class="count">${shownEvents.length}</span></div>

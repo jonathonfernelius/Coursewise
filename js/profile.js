@@ -68,7 +68,7 @@
             <input id="photo-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
             <p class="photo-help">JPG, PNG, or WebP · Up to 10 MB</p></section>
           <section class="card" id="canvas"><div class="section-head"><h2>Canvas</h2></div>
-            <p class="muted">Not connected. Canvas assignment import is coming later.</p></section>
+            <p class="muted">Checking your Canvas connection…</p></section>
           <section class="card cw-profile-streak-card" aria-label="Your streaks">
             <div class="section-head"><h2>Your streaks</h2><details class="cw-streak-info"><summary aria-label="About streaks"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v2"/></svg></summary><div class="cw-streak-info-copy">Complete a task on consecutive days to build a streak. Days follow Mountain Time. Personal best keeps your highest recorded streak, even after you delete completed tasks. Current streak uses your remaining completion history.</div></details></div>
             ${streakMarkup}
@@ -96,7 +96,9 @@
               <div class="switch-row"><div><label for="p-done">Show completed tasks</label><small>Show or hide completed tasks on Today, To-do, and Calendar.</small></div>
                 <span class="switch"><input id="p-done" type="checkbox"${S.prefs.showDone ? " checked" : ""}><span></span></span></div>
               <div class="switch-row"><div><label for="p-24h">Military time (24-hour)</label><small>Show times like 15:30 instead of 3:30 PM.</small></div>
-                <span class="switch"><input id="p-24h" type="checkbox"${T.timeFormat() === "24" ? " checked" : ""}><span></span></span></div></div></section>
+                <span class="switch"><input id="p-24h" type="checkbox"${T.timeFormat() === "24" ? " checked" : ""}><span></span></span></div>
+              <div class="switch-row"><div><label for="replay-intro">Getting started guide</label><small>Show the setup steps on Today again.</small></div>
+                <button type="button" class="btn btn-outline" id="replay-intro">Show on Today</button></div></div></section>
           <section class="card" id="categories"><div class="section-head"><h2>Categories</h2><span class="count">${S.categories.length}</span></div>
             <div class="cat-list">${S.categories.map(c => `<div class="cat-row t-${c.tone}"><span class="dot"></span><strong>${esc(c.name)}</strong>
               <small>${S.tasks.filter(t => t.categoryId === c.id).length} tasks</small>
@@ -134,6 +136,7 @@
     }, e.submitter); };
     root.querySelectorAll("[name=theme]").forEach(r => r.onchange = () => U.run(async () => { try { await T.setPrefs({ theme: r.value }); U.toast("Theme updated"); } finally { render(); } }, r));
     $("p-week").onchange = e => U.run(async () => { try { await T.setPrefs({ weekStart: Number(e.target.value) }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
+    $("replay-intro").onclick = e => U.run(async () => { await T.setIntroDone(false); location.href = "home.html"; }, e.currentTarget);
     $("p-done").onchange = e => U.run(async () => { try { await T.setPrefs({ showDone: e.target.checked }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     $("p-24h").onchange = e => U.run(async () => { try { await T.setPrefs({ timeFormat: e.target.checked ? "24" : "12" }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     if ($("profile-photo-zoom")) $("profile-photo-zoom").onclick = e => {

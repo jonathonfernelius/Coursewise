@@ -173,6 +173,15 @@
     </section>`;
   }
 
+  // First visit: nothing to organize yet, so suggest a list per class instead of an empty Unassigned section.
+  function emptyMarkup() {
+    return `<section class="card todo-start">
+      <h2>Start with a list for each class</h2>
+      <p class="muted">Lists keep things grouped, like one per course and one for everything else. Tasks can go in a list or stand on their own.</p>
+      <div class="todo-start-actions"><button type="button" class="btn btn-primary" id="start-new-list">${U.icons.plus} New list</button>
+        <button type="button" class="btn btn-outline" id="start-add-task">${U.icons.plus} Add a task</button></div></section>`;
+  }
+
   function render() {
     const S = T.state;
     ensureSortSettings();
@@ -206,7 +215,7 @@
           <button class="icon-btn" data-rename="${l.id}" aria-label="Rename ${T.esc(l.title)}">${U.icons.pencil}</button>
           <button class="icon-btn danger" data-delete="${l.id}" aria-label="Delete ${T.esc(l.title)}">${U.icons.trash}</button></div>
           ${open ? `<div class="task-list" data-task-list="${T.esc(l.id)}">${items.length ? items.map(t => U.taskRow(t, { draggable: true })).join("") : '<p class="empty">No tasks in this list.</p>'}</div>` : ""}</section>`;
-      }).join("")}${unassignedMarkup(S)}</div></div>`;
+      }).join("")}${!S.lists.length && !S.tasks.length ? emptyMarkup() : unassignedMarkup(S)}</div></div>`;
 
     root.querySelector('#show-completed').onclick = e => U.run(async () => {
       await T.setPrefs({ showDone: !T.state.prefs.showDone });
@@ -224,6 +233,9 @@
     };
     updateSelectionUI();
     document.getElementById("new-list").onclick = () => nameDialog("New list", "", async v => { await T.addList(v); U.toast("List added"); render(); });
+    const startList = document.getElementById("start-new-list"), startTask = document.getElementById("start-add-task");
+    if (startList) startList.onclick = () => document.getElementById("new-list").click();
+    if (startTask) startTask.onclick = () => document.getElementById("add").click();
     root.querySelectorAll("[data-collapse]").forEach(b => b.onclick = () => { const id = b.dataset.collapse; collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); render(); });
     root.querySelectorAll("[data-sort-trigger]").forEach(trigger => {
       const wrap = trigger.closest(".list-sort");

@@ -722,3 +722,9 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
   .list-head .sort-option{min-height:2.75rem;white-space:normal}
   .list-head .sort-direction{width:2.5rem;height:2.5rem;flex:none}
 }
+
+/* To-do first visit */
+.todo-start{display:grid;gap:.5rem;justify-items:start;padding:1.8rem 1.6rem}
+.todo-start h2{font-size:1.35rem}
+.todo-start p{max-width:34rem;font-size:.9rem}
+.todo-start-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.6rem}

@@ -129,7 +129,8 @@
   }
   // Only the first appearance animates; later re-renders (e.g. checking off a task) just draw it in place.
   function reminderHTML() {
-    if (canvasStatus !== false || dismissed()) return "";
+    // The getting-started guide already has a Canvas step, so don't show both.
+    if (canvasStatus !== false || dismissed() || window.CoursewiseIntro?.visible()) return "";
     const enter = !reminderAnimated; reminderAnimated = true;
     return `<div class="cw-reminder-wrap${enter ? " is-entering" : ""}"><div class="cw-reminder-inner"><aside class="cw-reminder" role="status">
         <span class="cw-reminder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="m9 15 2 2 4-4"/></svg><i class="cw-spark a"></i><i class="cw-spark b"></i></span>
@@ -175,7 +176,7 @@
         ${when ? `<span class="week-row-when">${T.esc(when)}</span>` : ""}</li>`;
     };
     function weekAgenda() {
-      if (!week.length) return `<p class="week-empty">Nothing due this week. Enjoy the breathing room.</p>`;
+      if (!week.length) return `<p class="week-empty">${fresh ? "Add tasks with due dates to see your next seven days here." : "Nothing due this week. Enjoy the breathing room."}</p>`;
       if (weekMode === "course") {
         const groups = new Map();
         for (const task of week.slice().sort((x, y) => (x.due || "").localeCompare(y.due || "") || byTime(x, y))) {
@@ -199,21 +200,30 @@
                : `<div class="week-bar is-empty${d.offset === 0 ? " is-today" : ""}" role="img" aria-label="${T.esc(label)}">${inner}</div>`;
     }).join("");
     const date = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+    // A brand-new account: empty sections point to what to do instead of saying the work is finished.
+    const fresh = !all.length;
+    const intro = window.CoursewiseIntro?.html({
+      canvas: canvasStatus,
+      onAddTask: () => U.taskDialog({ due: today, done: render }),
+      rerender: render,
+      // Closing the guide with Canvas unconnected also snoozes the Canvas reminder, so it doesn't pop up right away.
+      onClose: steps => { if (!steps.find(x => x.id === "canvas")?.done) try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {} }
+    }) || "";
 
     root.innerHTML = `<div class="container">
       <div class="page-head"><div><h1>Hi, ${T.esc(T.state.user.first)}</h1><p>${date}</p></div>
         <div class="head-actions"><button class="btn btn-primary" id="add">${U.icons.plus} Add task</button></div></div>
-      ${reminderHTML()}
+      ${intro}${reminderHTML()}
       <div class="stack">
         <section class="hero${T.state.streak ? ' has-streak' : ''}" aria-label="Daily snapshot"><small>Daily snapshot</small>
           <h2>${open.length ? `${open.length} ${open.length === 1 ? "thing" : "things"} left today.` : dueToday.length ? "Today is done." : "Your day is clear."}</h2>
-          <p>${T.esc(snapshotMessage(open.length, today))}</p>
+          <p>${fresh ? "Add a task and it shows up here." : T.esc(snapshotMessage(open.length, today))}</p>
           ${streakHTML()}
           <div class="hero-stat"><strong>${T.state.completedToday ?? 0}</strong><span>completed today</span></div></section>
         <section class="card today-card"><div class="section-head"><h2>Today</h2><span class="count">${visibleToday.length}</span></div>
-          <div class="task-list${visibleToday.length ? " has-tasks" : ""}">${rows(visibleToday, "Nothing due today. Enjoy it.", { date: false })}</div></section>
+          <div class="task-list${visibleToday.length ? " has-tasks" : ""}">${rows(visibleToday, fresh ? "Tasks due today show up here." : "Nothing due today. Enjoy it.", { date: false })}</div></section>
         <section class="card overdue-card"><div class="section-head"><h2>Overdue</h2><span class="count warn">${overdue.length}</span></div>
-          <div class="task-list${overdue.length ? " has-tasks" : ""}">${rows(overdue, "You're all caught up.", { overdue: true })}</div></section>
+          <div class="task-list${overdue.length ? " has-tasks" : ""}">${rows(overdue, fresh ? "Anything past its due date shows up here." : "You're all caught up.", { overdue: true })}</div></section>
         <section class="card week-card" aria-labelledby="week-heading"><div class="section-head"><h2 id="week-heading">This week</h2><span class="count" aria-label="${week.length} tasks due in the next seven days">${week.length}</span></div>
           <div class="week-top"><div class="week-stat"><strong>${week.length ? `${week.length} ${week.length === 1 ? "thing" : "things"} due` : "Nothing due"}</strong></div>
             <div class="week-chart" aria-label="Tasks due each day this week">${weekChart}</div></div>
@@ -249,6 +259,7 @@
       wrap.classList.remove("is-entering"); wrap.classList.add("is-leaving");
       setTimeout(() => wrap.remove(), calm() ? 20 : 480);
     };
+    window.CoursewiseIntro?.bind();
     document.getElementById("add").onclick = () => U.taskDialog({ due: today, done: render });
   }
   document.addEventListener("visibilitychange", () => {
