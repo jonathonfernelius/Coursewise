@@ -44,8 +44,336 @@
     showCheerToast(fresh[0]);
   }
 
+
+  /* ==========================================
+     WHIMSY — INCOMING FRIEND CHEER BANKS
+     ========================================== */
+
+  const THEMED_CHEERS = {
+    northpole: {
+      title: "Special delivery",
+      low: [
+        "The elves are rooting for you!",
+        "One little present at a time. You've got this!"
+      ],
+      mid: [
+        "The workshop is buzzing about your progress!",
+        "Santa's impressed with your hard work!"
+      ],
+      high: [
+        "Even Santa couldn't keep up with you!",
+        "You've officially outworked the entire workshop!"
+      ],
+      rare: [
+        "An anonymous reindeer has nominated you for Employee of the Month.",
+        "BREAKING: The elves are demanding a cookie break in your honor."
+      ]
+    },
+
+    cottage: {
+      title: "A little sunshine",
+      low: [
+        "Every garden begins with a single seed.",
+        "Your garden grows at its own pace. Keep going!"
+      ],
+      mid: [
+        "Look at all those little accomplishments blooming!",
+        "The butterflies have noticed your hard work!"
+      ],
+      high: [
+        "Your garden is positively overflowing!",
+        "You've grown an entire meadow of accomplishments!"
+      ],
+      rare: [
+        "The mushroom council has declared a holiday in your honor.",
+        "A hedgehog in a waistcoat has requested your autograph."
+      ]
+    },
+
+    pirate: {
+      title: "A message from the crew",
+      low: [
+        "Steady as she goes, Captain. Your crew's with you!",
+        "Every great voyage begins with one small step aboard."
+      ],
+      mid: [
+        "Now that's a fine haul of treasure!",
+        "Your crew is celebrating another successful voyage!"
+      ],
+      high: [
+        "You've conquered enough quests to fill a treasure chest!",
+        "The entire fleet is raising its flags for you!"
+      ],
+      rare: [
+        "A seagull has attempted to steal your diploma.",
+        "The Pirate Council has declared you dangerously competent."
+      ]
+    },
+
+    space: {
+      title: "Incoming transmission",
+      low: [
+        "Mission Control believes in you, Commander.",
+        "Every mission begins with a single launch."
+      ],
+      mid: [
+        "Your mission progress is exceeding expectations!",
+        "Mission Control reports impressive momentum!"
+      ],
+      high: [
+        "Commander, your productivity is approaching warp speed.",
+        "The entire galaxy is applauding your accomplishments!"
+      ],
+      rare: [
+        "NASA would like to borrow your brain. Legal is reviewing the request.",
+        "A small moon has been named after you. Paperwork pending."
+      ]
+    },
+
+    kingdom: {
+      title: "A royal proclamation",
+      low: [
+        "The court stands behind you, Your Majesty.",
+        "Even the greatest kingdoms are built one stone at a time."
+      ],
+      mid: [
+        "Your royal accomplishments are drawing applause!",
+        "The kingdom celebrates your noble progress!"
+      ],
+      high: [
+        "A royal holiday has been declared in your honor!",
+        "The royal council is running out of medals to award you!"
+      ],
+      rare: [
+        "The royal goose has knighted you. HONK.",
+        "A bard has composed seventeen verses about your productivity."
+      ]
+    },
+
+    west: {
+      title: "News from the frontier",
+      low: [
+        "Keep your chin up, partner. You've got this!",
+        "Every long trail starts with one step."
+      ],
+      mid: [
+        "You're rounding up those tasks like a pro!",
+        "The whole town's tipping their hats to you!"
+      ],
+      high: [
+        "You've conquered the entire frontier, partner!",
+        "The sheriff has officially declared you unstoppable!"
+      ],
+      rare: [
+        "WANTED: For excessive productivity. Reward: One cookie.",
+        "The town has named a horse after you. It's very fast."
+      ]
+    },
+
+    dinos: {
+      title: "A prehistoric roar",
+      low: [
+        "The dig team believes in you. One fossil at a time!",
+        "Every great discovery starts with a little digging."
+      ],
+      mid: [
+        "Five discoveries? You're making prehistoric history!",
+        "The entire dig team is celebrating your progress!"
+      ],
+      high: [
+        "The museum needs an entire wing dedicated to you!",
+        "Your productivity is officially dinosaur-sized!"
+      ],
+      rare: [
+        "A tiny T. rex has requested your autograph. The pen is proving difficult.",
+        "Scientists have named a new species Productivitysaurus magnificentus."
+      ]
+    },
+
+    faeries: {
+      title: "A magical blessing",
+      low: [
+        "Even the smallest spell begins with a spark.",
+        "The fairy circle believes in your magic!"
+      ],
+      mid: [
+        "The fairy circle celebrates your growing magic!",
+        "Your accomplishments are making the forest sparkle!"
+      ],
+      high: [
+        "The entire enchanted realm is in awe of you!",
+        "Your magic is powerful enough to light a thousand lanterns!"
+      ],
+      rare: [
+        "A mushroom has proclaimed you ruler of the forest. It's official.",
+        "A unicorn has requested an appointment with your publicist."
+      ]
+    },
+
+    sports: {
+      title: "A cheer from the sidelines",
+      low: [
+        "Your team believes in you. Keep playing!",
+        "One play at a time. You've got this!"
+      ],
+      mid: [
+        "WHAT A PLAY! The crowd is going wild!",
+        "Your team is celebrating some serious progress!"
+      ],
+      high: [
+        "MVP! MVP! MVP! The stadium is chanting your name!",
+        "You've absolutely dominated the scoreboard today!"
+      ],
+      rare: [
+        "The mascot has performed a backflip in your honor.",
+        "The commentators have run out of superlatives. Send help."
+      ]
+    },
+
+    cars: {
+      title: "A message from the pit crew",
+      low: [
+        "Your pit crew has your back. Keep going!",
+        "Every great race starts at the starting line."
+      ],
+      mid: [
+        "You're putting in some seriously impressive laps!",
+        "Your pit crew is celebrating that momentum!"
+      ],
+      high: [
+        "CHECKERED FLAG! What an incredible performance!",
+        "You've officially lapped your entire to-do list!"
+      ],
+      rare: [
+        "Race control is investigating your suspiciously fast productivity.",
+        "Your homework has just set a new lap record at Monaco."
+      ]
+    },
+
+    dragon: {
+      title: "A message from the dragons",
+      low: [
+        "Even the mightiest dragon begins with a spark.",
+        "The dragons believe in your growing strength!"
+      ],
+      mid: [
+        "Your hoard of accomplishments is growing!",
+        "The dragons roar in celebration of your progress!"
+      ],
+      high: [
+        "Your achievements are worthy of a legendary hoard!",
+        "The entire dragon kingdom bows before your greatness!"
+      ],
+      rare: [
+        "A baby dragon has attempted to eat your homework. It tasted like victory.",
+        "The ancient dragons have declared you an honorary menace."
+      ]
+    }
+  };
+
+  /* These are the existing Supabase message tiers.
+     Matching them preserves the original progress
+     categories and the server's rare-message roll. */
+
+  const ORIGINAL_CHEER_TIERS = {
+    low: [
+      "Lock in. You got this. 🔒",
+      "One task at a time. You've got this.",
+      "Someone's rooting for you!",
+      "Progress is progress. Keep it up.",
+      "You got this. Now go make it happen.",
+      "Your hype squad has arrived."
+    ],
+    mid: [
+      "Okay, you're actually cooking. 🔥",
+      "You're crushing it today.",
+      "Someone understood the assignment.",
+      "The to-do list never stood a chance.",
+      "Keep that momentum going!",
+      "That's some serious progress. Nice work."
+    ],
+    high: [
+      "Respectfully, go touch grass. 🌱",
+      "At this point, your to-do list is afraid of you.",
+      "Absolute academic weapon.",
+      "Your productivity is getting out of hand. Take a break.",
+      "You're on another level today.",
+      "That's enough productivity to last a week."
+    ],
+    rare: [
+      "Achievement unlocked: Main character energy.",
+      "This is your sign to get a little treat.",
+      "Your productivity has been deemed suspicious. We're investigating.",
+      "Side quest complete: Being productive.",
+      "You have earned one (1) imaginary gold star. ⭐",
+      "Your effort has been noted. This message is your official recognition.",
+      "Plot twist: You're actually getting things done.",
+      "Somewhere, your future self is giving you a standing ovation."
+    ]
+  };
+
+  function cheerMessageTier(message) {
+    for (const [tier, messages] of Object.entries(ORIGINAL_CHEER_TIERS)) {
+      if (messages.includes(message)) return tier;
+    }
+
+    return null;
+  }
+
+  /* Deterministic selection: the same cheer keeps
+     the same themed message across refreshes. */
+
+  function stableCheerIndex(notification, count) {
+    const key = [
+      notification.sender,
+      notification.created_at,
+      notification.message
+    ].join("|");
+
+    let hash = 0;
+
+    for (let i = 0; i < key.length; i++) {
+      hash = (Math.imul(hash, 31) + key.charCodeAt(i)) | 0;
+    }
+
+    return (hash >>> 0) % count;
+  }
+
+  function cheerDisplay(notification) {
+    const settings = window.CoursewiseWhimsy?.config?.();
+    const theme = settings?.enabled
+      ? THEMED_CHEERS[settings.theme]
+      : null;
+
+    const sender = notification.sender || "A friend";
+    const original = notification.message || "";
+
+    if (!theme) {
+      return {
+        title: `👏 ${sender} cheered you on!`,
+        message: original
+      };
+    }
+
+    const tier = cheerMessageTier(original);
+    const bank = tier ? theme[tier] : null;
+
+    /* Unknown server messages remain untouched. */
+    const message = bank?.length
+      ? bank[stableCheerIndex(notification, bank.length)]
+      : original;
+
+    return {
+      title: `${theme.title} from ${sender}!`,
+      message
+    };
+  }
+
+
   function showCheerToast(notification) {
     document.querySelector('.cw-f-celebration')?.remove();
+
+    const cheerText = cheerDisplay(notification);
 
     const toast = document.createElement('aside');
     toast.className = 'cw-f-celebration';
@@ -54,11 +382,12 @@
 
     toast.innerHTML = `
       <div class="cw-f-celebration-copy">
-        <strong>👏 ${esc(notification.sender)} cheered you on!</strong>
-        <p>${esc(notification.message)}</p>
+        <strong>${esc(cheerText.title)}</strong>
+        <p>${esc(cheerText.message)}</p>
       </div>
       <button type="button" class="cw-f-celebration-close" aria-label="Dismiss cheer">×</button>
     `;
+
 
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const confetti = document.createElement('div');
@@ -267,16 +596,25 @@
         )
         .sort((a,b)=>Number(b.mutuals)-Number(a.mutuals))
         .slice(0,12);
-
+    
     if(active==='notifications')
       return (data.notifications||[]).length
-        ? data.notifications.map(n=>`
-            <div class="cw-f-notification">
-              <strong>${esc(n.sender)} cheered you on!</strong>
-              <p>${esc(n.message)}</p>
-              <small>${new Date(n.created_at).toLocaleString(undefined, window.Tidy?.timeFormat?.() === '24' ? {hourCycle:'h23'} : undefined)}</small>
-            </div>
-          `).join('')
+        ? data.notifications.map(n => {
+            const cheerText = cheerDisplay(n);
+
+            return `
+              <div class="cw-f-notification">
+                <strong>${esc(cheerText.title)}</strong>
+                <p>${esc(cheerText.message)}</p>
+                <small>${new Date(n.created_at).toLocaleString(
+                  undefined,
+                  window.Tidy?.timeFormat?.() === '24'
+                    ? {hourCycle:'h23'}
+                    : undefined
+                )}</small>
+              </div>
+            `;
+          }).join('')
         : '<p class="cw-f-empty">No cheers yet. Your hype squad will show up here!</p>';
 
     return list.length
