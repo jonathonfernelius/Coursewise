@@ -65,3 +65,40 @@
 .cw-w-note:empty { display:none; }
 .cw-w-note[data-tone="ok"] { color:var(--primary-dark); }
 .cw-w-note[data-tone="error"] { color:var(--danger); }
+
+
+
+/* ==========================================
+   SPRINT 3 FIX — WHIMSY SNAPSHOT DARK MODE
+   ========================================== */
+
+/* Keep dark text on the lighter snapshot cards. */
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]):not([data-whimsy="space"]):not([data-whimsy="northpole"]) .hero {
+  color: #172b29;
+}
+
+/* Project Athena has a dark night-sky background. */
+html[data-appearance="dark"][data-whimsy="space"] .hero {
+  color: #f7f5ff;
+}
+
+/* The North Pole has a dark forest-green background. */
+html[data-appearance="dark"][data-whimsy="northpole"] .hero {
+  color: #fff9ed;
+}
+
+/* Keep all snapshot text readable and visible. */
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero > small,
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero h2,
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero p,
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero .hero-stat,
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero .streak-bar {
+  color: inherit;
+}
+
+/* Improve the readability of smaller text. */
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero > small,
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero p,
+html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero .hero-stat span {
+  opacity: 1;
+}

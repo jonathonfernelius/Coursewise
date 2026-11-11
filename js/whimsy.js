@@ -948,6 +948,23 @@ function advanceProgress() {
   } catch {}
 }
 
+
+/* Whimsy names for Upcoming Events on Calendar. */
+const UPCOMING_EVENT_NAMES = {
+  northpole: "The Festive Forecast",
+  cottage: "Coming into Bloom",
+  pirate: "On the Horizon",
+  space: "On the Radar",
+  kingdom: "Royal Engagements",
+  west: "Around the Bend",
+  dinos: "Fresh Tracks Ahead",
+  faeries: "The Seer's Scroll",
+  sports: "Next on the Field",
+  cars: "On the Starting Grid",
+  dragon: "Beyond the Hoard"
+};
+
+
 /* Preserve original labels when Whimsy Mode is disabled. */
 const LABELS = [
   ['body[data-page="home"] .hero small',0],
@@ -993,6 +1010,19 @@ function updateWords() {
       replaceLabel(el,theme?.words[index])
     );
   }
+
+
+  /* Theme the Calendar's Upcoming Events heading. */
+  document.querySelectorAll(
+    'body[data-page="calendar"] .upcoming-events-card .section-head h2'
+  ).forEach(el => {
+    const name = theme
+      ? UPCOMING_EVENT_NAMES[config.theme]
+      : null;
+
+    replaceLabel(el, name);
+  });
+
 
   document.querySelectorAll(".cw-f-card h2").forEach(el =>
     replaceLabel(el,theme?.words[7])
