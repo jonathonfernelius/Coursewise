@@ -183,6 +183,18 @@ Deno.serve(async req => {
 
     const body = await req.json();
 
+    let accountId = typeof body.accountId === "string" ? body.accountId : "";
+    if (accountId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(accountId)) {
+      return reply({ error: "Invalid Canvas connection." }, 400);
+    }
+    if (!accountId) {
+      const { data: accounts, error } = await db.from("CanvasAccounts")
+        .select("CanvasAccountID").eq("AuthUserID", user.id).eq("IsConnected", true);
+      if (error) throw error;
+      if (accounts?.length !== 1) return reply({ error: "Choose which Canvas connection to import." }, 400);
+      accountId = accounts[0].CanvasAccountID;
+    }
+
     if (!Array.isArray(body.items) || body.items.length > 1000) {
       return reply({ error: "Invalid selection." }, 400);
     }
@@ -213,10 +225,12 @@ Deno.serve(async req => {
     }
 
     const { data: connection, error: connectionError } = await db
-      .from("CanvasCalendarFeeds")
-      .select("FeedURL")
+      .from("CanvasAccounts")
+      .select("FeedURL,CanvasAccountID")
+      .eq("CanvasAccountID", accountId)
       .eq("AuthUserID", user.id)
-      .single();
+      .eq("IsConnected", true)
+      .maybeSingle();
 
     if (connectionError || !connection) {
       return reply({ error: "Connect Canvas first." }, 400);
@@ -266,10 +280,17 @@ Deno.serve(async req => {
     const { data: existing, error: mappingError } = await db
       .from("CanvasImportedTasks")
       .select("CanvasUID,TaskID")
-      .eq("AuthUserID", user.id);
+      .eq("AuthUserID", user.id)
+      .eq("CanvasAccountID", accountId);
 
 
     if (mappingError) throw mappingError;
+
+    const { data: allMappings, error: allMappingsError } = await db
+      .from("CanvasImportedTasks")
+      .select("TaskID")
+      .eq("AuthUserID", user.id);
+    if (allMappingsError) throw allMappingsError;
 
     
     const imported = new Map(
@@ -425,7 +446,7 @@ Deno.serve(async req => {
       if (candidateError) throw candidateError;
 
       const mappedTaskIds = new Set(
-        [...imported.values()].map(value => String(value))
+        (allMappings || []).map(row => String(row.TaskID))
       );
       const orphanCandidates = (candidates || []).filter(
         task => !mappedTaskIds.has(String(task.TaskID))
@@ -446,6 +467,7 @@ Deno.serve(async req => {
           .from("CanvasImportedTasks")
           .insert({
             AuthUserID: user.id,
+            CanvasAccountID: accountId,
             CanvasUID: item.uid,
             TaskID: originalId
           });
@@ -504,6 +526,7 @@ Deno.serve(async req => {
         .from("CanvasImportedTasks")
         .insert({
           AuthUserID: user.id,
+          CanvasAccountID: accountId,
           CanvasUID: item.uid,
           TaskID: task.TaskID
         });

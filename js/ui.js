@@ -615,70 +615,39 @@
         action: 'status'
       });
 
-      if (!status.connected) return;
-
-      const [preview, selections] = await Promise.all([
-        invoke('canvas-preview', {}),
-        invoke('canvas-selections', { action: 'load' })
-      ]);
-
-      if (!Array.isArray(preview.events)) return;
-
-      const imported = selections.imported || [];
-
-      // Refresh existing assignment deadlines without
-      // changing their categories, lists, or completion.
-      if (imported.length) {
-        const sync = await invoke('canvas-import', {
-          action: 'sync-dates',
-          items: []
-        });
-
-        if (sync.datesUpdated > 0) {
-          await T.reload();
-          rerender();
-
-          const n = sync.datesUpdated;
-          updateCard({
-            title: n === 1 ? 'Canvas due date updated' : 'Canvas due dates updated',
-            body: `${n} ${n === 1 ? 'assignment' : 'assignments'} synced with Canvas.`
-          });
+      const connections = (status.accounts || []).filter(account => account.IsConnected);
+      if (!connections.length) return;
+      let newCount = 0;
+      let updatedCount = 0;
+      for (const account of connections) {
+        const accountId = account.CanvasAccountID;
+        const [preview, selections] = await Promise.all([
+          invoke('canvas-preview', { accountId }),
+          invoke('canvas-selections', { action: 'load', accountId })
+        ]);
+        if (!Array.isArray(preview.events)) continue;
+        const imported = selections.imported || [];
+        if (imported.length) {
+          const sync = await invoke('canvas-import', { action: 'sync-dates', items: [], accountId });
+          updatedCount += Number(sync.datesUpdated) || 0;
         }
+        let priorImportFlag = false;
+        try { priorImportFlag = localStorage.getItem(`coursewise-canvas-imported-${auth.user.id}-${accountId}`) === '1'; }
+        catch { /* Private browsing may block local storage. */ }
+        const history = imported.length || (selections.choices || []).length || priorImportFlag;
+        if (!history) continue;
+        const known = new Set([...imported.map(row => row.CanvasUID), ...(selections.choices || []).map(row => row.CanvasUID)]);
+        newCount += preview.events.filter(event => event?.uid && !known.has(event.uid)).length;
       }
-
-      // Preserve the existing first-time import system.
-      let priorImportFlag = false;
-
-      try {
-        priorImportFlag = localStorage.getItem(
-          `coursewise-canvas-imported-${auth.user.id}`
-        ) === '1';
-      } catch {
-        // Private browsing may block local storage.
+      if (updatedCount > 0) {
+        await T.reload(); rerender();
+        updateCard({
+          title: updatedCount === 1 ? 'Canvas due date updated' : 'Canvas due dates updated',
+          body: `${updatedCount} ${updatedCount === 1 ? 'assignment' : 'assignments'} synced with Canvas.`
+        });
       }
-
-      const history =
-        imported.length ||
-        (selections.choices || []).length ||
-        priorImportFlag;
-
-      if (!history) return;
-
-      // A saved decision (including "skip") is not a new Canvas item.
-      const known = new Set([
-        ...imported.map(row => row.CanvasUID),
-        ...(selections.choices || []).map(row => row.CanvasUID)
-      ]);
       document.querySelector('#cw-auto-canvas-notice')?.remove();
-
-      const fresh = preview.events.filter(
-        event => event?.uid && !known.has(event.uid)
-      );
-
-      if (!fresh.length) return;
-
-      // Show a reminder instead of importing automatically.
-      canvasNotice(fresh.length);
+      if (newCount > 0) canvasNotice(newCount);
 
     } catch (error) {
       // Canvas errors never prevent Coursewise from opening.

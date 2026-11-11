@@ -8,6 +8,8 @@
 
   const client = window.tidyClient;
   let connected = false;
+  let accounts = [];
+  let activeAccountId = null;
   let currentSection = null;
   let previewData = null;
   let canvasHistoryKey = null;
@@ -41,6 +43,15 @@
     .cw-canvas-actions #cw-preview-button{font-size:13px;padding:10px 16px;min-height:40px;border-radius:12px}
     .cw-canvas-footer #cw-disconnect{font-size:12px;padding:8px 4px;min-height:36px;background:transparent;border-color:transparent;color:var(--muted-fg);box-shadow:none}
     .cw-canvas-footer #cw-disconnect:hover{color:var(--fg);text-decoration:underline}
+    .cw-canvas-account-manager{display:grid;gap:8px;margin:0 0 16px;max-width:520px}
+    .cw-canvas-account-manager label{font-size:13px;color:var(--muted-fg)}
+    .cw-canvas-account-manager select{width:100%;min-height:42px;padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--fg)}
+    .cw-canvas-account-actions{display:flex;flex-wrap:wrap;gap:8px}
+    .cw-canvas-add-form{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+    .cw-canvas-disconnect-dialog{width:min(540px,calc(100vw - 32px));padding:24px;border:1px solid var(--border);border-radius:18px;background:var(--card);color:var(--fg);box-shadow:0 24px 80px #0005}
+    .cw-canvas-disconnect-dialog::backdrop{background:#1119;backdrop-filter:blur(2px)}
+    .cw-canvas-disconnect-dialog p{color:var(--muted-fg);line-height:1.55}
+    .cw-canvas-dialog-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:20px}
     #cw-canvas-preview:empty{display:none}
     /* Spacing: the preview sits 16px below the button row; while only the loading card shows (button hidden) it sits snug under the identity row. */
     #cw-canvas-preview{margin-top:16px}
@@ -418,8 +429,36 @@
     if (action === "connect") {
       body.feedUrl = feedUrl;
     }
+    if (action === "disconnect" || action === "rename" || action === "reconnect") body.accountId = activeAccountId;
 
     return callFunction("canvas-connect", body);
+  }
+
+  function callAccountFunction(name, body = {}) {
+    return callFunction(name, { ...body, accountId: activeAccountId });
+  }
+
+  function clearAccountState() {
+    choices.clear(); coursePreferences.clear(); reviewCache.clear(); editedSelections.clear();
+    courseDestinations.clear(); courseNewNames.clear(); saveDirty = false; previewData = null;
+    reviewFresh = []; canvasHistoryKey = null;
+  }
+
+  function askDisconnectChoice() {
+    return new Promise(resolve => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "cw-canvas-disconnect-dialog";
+      dialog.setAttribute("aria-labelledby", "cw-disconnect-title");
+      dialog.innerHTML = `<h3 id="cw-disconnect-title">Disconnect this Canvas connection?</h3><p>This only changes data in Coursewise. It does not delete your Canvas or Coursewise account.</p><p>Choose whether to keep its imported assignments in Coursewise or remove them with the connection.</p><div class="cw-canvas-dialog-actions"><button type="button" value="cancel" class="btn btn-outline">Cancel</button><button type="button" value="keep" class="btn btn-outline">Disconnect and keep assignments</button><button type="button" value="remove" class="btn btn-primary">Remove connection and assignments from Coursewise</button></div>`;
+      dialog.addEventListener("click", event => {
+        if (event.target === dialog) dialog.close("cancel");
+      });
+      dialog.querySelectorAll("button").forEach(button => button.addEventListener("click", () => dialog.close(button.value)));
+      dialog.addEventListener("close", () => { const value = dialog.returnValue; dialog.remove(); resolve(value === "keep" || value === "remove" ? value : null); }, { once: true });
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      dialog.querySelector("button")?.focus();
+    });
   }
 
   function message(section, text, isError = false) {
@@ -549,10 +588,7 @@
 
   // Read stored choices and imported task IDs.
   async function loadSelections(events, savedResult = null) {
-    const result = savedResult ?? await callFunction(
-      "canvas-selections",
-      { action: "load" }
-    );
+    const result = savedResult ?? await callAccountFunction("canvas-selections", { action: "load" });
 
     const saved = new Map(
       (result.choices || []).map(item => [
@@ -674,7 +710,7 @@
     }));
     if (!items.length) { setSaveStatus(""); return; }
     try {
-      await callFunction("canvas-selections", {action: "save", items});
+      await callAccountFunction("canvas-selections", {action: "save", items});
       if (!saveDirty) setSaveStatus("Choices saved");
     } catch {
       saveDirty = true;
@@ -1124,15 +1160,15 @@
         for (const event of fresh) getChoice(event).listId = courseDestinations.get(courseOf(event)) === "__create__" ? null : courseDestinations.get(courseOf(event)) || null;
         await resolveCourseCategorySuggestions(toImport);
         activity(progress, "loading", `Importing ${toImport.length} assignments…`, "Adding your selections to Coursewise. Keep this page open.");
-        const result = await callFunction("canvas-import", {items: toImport.map(event => ({uid: event.uid, listId: getChoice(event).listId, categoryId: getChoice(event).categoryId || null}))});
+        const result = await callAccountFunction("canvas-import", {items: toImport.map(event => ({uid: event.uid, listId: getChoice(event).listId, categoryId: getChoice(event).categoryId || null}))});
         importFinished = true;
         for (const uid of result.clearedListUIDs || []) if (choices.has(uid)) choices.get(uid).listId = null;
         activity(progress, "loading", "Finishing up…", "Saving your choices and refreshing your tasks.");
-        await callFunction("canvas-selections", {action: "save", items: fresh.map(event => ({uid: event.uid, selected: getChoice(event).selected, listId: getChoice(event).listId, categoryId: getChoice(event).categoryId || null}))});
+        await callAccountFunction("canvas-selections", {action: "save", items: fresh.map(event => ({uid: event.uid, selected: getChoice(event).selected, listId: getChoice(event).listId, categoryId: getChoice(event).categoryId || null}))});
         for (const e of fresh) editedSelections.add(e.uid);
         saveDirty = false;
         await window.Tidy.reload();
-        const refreshed = await callFunction("canvas-selections", {action: "load"});
+        const refreshed = await callAccountFunction("canvas-selections", {action: "load"});
         imported.clear();
         for (const row of refreshed.imported || []) imported.set(row.CanvasUID, String(row.TaskID));
         if (canvasHistoryKey) try {localStorage.setItem(canvasHistoryKey, "1");} catch {}
@@ -1148,7 +1184,7 @@
         back.addEventListener("click", async () => {
           back.disabled = true;
           try {
-            const refreshed = await callFunction("canvas-selections", {action: "load"});
+            const refreshed = await callAccountFunction("canvas-selections", {action: "load"});
             imported.clear();
             for (const row of refreshed.imported || []) imported.set(row.CanvasUID, String(row.TaskID));
             renderPreview(section, events, imported, review);
@@ -1189,7 +1225,7 @@
         if (!section.isConnected || run !== aiRunId) return;
         const batch = pending.slice(offset, offset + 80);
         activity(card, "loading", `Reviewing batch ${Math.floor(offset / 80) + 1} of ${Math.ceil(pending.length / 80)}…`, `${reviewed} of ${scope.length} items reviewed. Gemini is preparing your suggested import.`, reviewed, scope.length);
-        const result = await callFunction("canvas-ai-suggestions", {items: batch.map((event, index) => ({index, title: event.title || "", eventType: event.type || event.eventType || event.kind || (/^event-calendar-event-/.test(event.uid || "") ? "calendar event" : /^event-assignment-/.test(event.uid || "") ? "assignment" : ""), due: event.due || ""}))});
+        const result = await callAccountFunction("canvas-ai-suggestions", {items: batch.map((event, index) => ({index, title: event.title || "", eventType: event.type || event.eventType || event.kind || (/^event-calendar-event-/.test(event.uid || "") ? "calendar event" : /^event-assignment-/.test(event.uid || "") ? "assignment" : ""), due: event.due || ""}))});
         if (!Array.isArray(result?.suggestions)) throw new Error("Unexpected AI response.");
         const suggestions = new Map();
         for (const item of result.suggestions) if (item && Number.isInteger(item.index) && item.index >= 0 && item.index < batch.length && item.recommendSkip === true && typeof item.reason === "string") suggestions.set(item.index, item.reason.slice(0, 140));
@@ -1258,8 +1294,8 @@
       console.time("Canvas parallel fetch");
 
       const [result, savedResult] = await Promise.all([
-        callFunction("canvas-preview", {}),
-        callFunction("canvas-selections", { action: "load" })
+        callAccountFunction("canvas-preview", {}),
+        callAccountFunction("canvas-selections", { action: "load" })
       ]);
 
       console.timeEnd("Canvas parallel fetch");
@@ -1277,7 +1313,7 @@
       // This intentionally does NOT import new items or change their tags.
       if ((savedResult.imported || []).length) {
         activity(loadingCard, "loading", "Updating assignment dates…", "");
-        const dateSync = await callFunction("canvas-import", {
+        const dateSync = await callAccountFunction("canvas-import", {
           action: "sync-dates",
           items: []
         });
@@ -1298,8 +1334,8 @@
       // Import history is based on server-saved rows, not just visible tasks.
       // The per-user browser flag also survives deleting every assignment.
       const { data: authData } = await client.auth.getUser();
-      canvasHistoryKey = authData?.user?.id
-        ? `coursewise-canvas-imported-${authData.user.id}` : null;
+      canvasHistoryKey = authData?.user?.id && activeAccountId
+        ? `coursewise-canvas-imported-${authData.user.id}-${activeAccountId}` : null;
       let hadEarlierImport = Boolean(
         (savedResult.imported || []).length ||
         (savedResult.choices || []).length
@@ -1336,6 +1372,94 @@
 
     if (!content) return;
 
+    const manager = document.createElement("div");
+    manager.className = "cw-canvas-account-manager";
+    if (accounts.length) {
+      const selectLabel = element("label", "Canvas connections");
+      selectLabel.htmlFor = "cw-canvas-account-select";
+      const select = document.createElement("select");
+      select.id = "cw-canvas-account-select";
+      select.setAttribute("aria-label", "Choose a Canvas connection");
+      for (const account of accounts) {
+        const option = element("option", `${account.Label}${account.IsConnected ? "" : " (disconnected)"}`);
+        option.value = account.CanvasAccountID;
+        option.selected = account.CanvasAccountID === activeAccountId;
+        select.appendChild(option);
+      }
+      select.addEventListener("change", () => {
+        const selectedId = select.value;
+        void (async () => {
+          await flushSave();
+          if (saveDirty) { message(section, "Your Canvas choices could not be saved yet. Try again before switching connections.", true); return; }
+          activeAccountId = selectedId;
+          connected = Boolean(accounts.find(a => a.CanvasAccountID === activeAccountId)?.IsConnected);
+          clearAccountState();
+          showInterface(section);
+        })();
+      });
+      manager.append(selectLabel, select);
+    }
+    const actions = element("div", "", "cw-canvas-account-actions");
+    const current = accounts.find(a => a.CanvasAccountID === activeAccountId);
+    if (current) {
+      const rename = element("button", "Rename connection", "btn btn-outline");
+      rename.type = "button";
+      rename.addEventListener("click", async () => {
+        const label = prompt("Choose a label for this Canvas connection:", current.Label);
+        if (label == null || !label.trim()) return;
+        try {
+          const result = await callFunction("canvas-connect", { action: "rename", accountId: activeAccountId, label: label.trim() });
+          accounts = accounts.map(a => a.CanvasAccountID === activeAccountId ? { ...a, ...result.account } : a);
+          showInterface(section);
+        } catch (error) { message(section, error.message, true); }
+      });
+      actions.appendChild(rename);
+      if (!current.IsConnected) {
+        const reconnect = element("button", "Reconnect", "btn btn-primary");
+        reconnect.type = "button";
+        reconnect.addEventListener("click", async () => {
+          reconnect.disabled = true;
+          try {
+            const result = await callCanvas("reconnect");
+            accounts = accounts.map(a => a.CanvasAccountID === activeAccountId ? { ...a, ...result.account } : a);
+            connected = true; clearAccountState(); showInterface(section); await previewCanvas(section);
+          } catch (error) { message(section, error.message, true); reconnect.disabled = false; }
+        });
+        actions.appendChild(reconnect);
+        const remove = element("button", "Remove connection and imported assignments from Coursewise", "btn btn-outline");
+        remove.type = "button";
+        remove.addEventListener("click", async () => {
+          if (!confirm("This permanently removes this Canvas connection and its imported assignments and saved choices from Coursewise. It does not delete your Canvas or Coursewise account. Continue?")) return;
+          try {
+            await callFunction("canvas-connect", { action: "disconnect", accountId: activeAccountId, deleteImportedTasks: true });
+            accounts = accounts.filter(a => a.CanvasAccountID !== activeAccountId);
+            activeAccountId = accounts[0]?.CanvasAccountID || null;
+            connected = Boolean(accounts.find(a => a.CanvasAccountID === activeAccountId)?.IsConnected);
+            clearAccountState(); showInterface(section);
+          } catch (error) { message(section, error.message, true); }
+        });
+        actions.appendChild(remove);
+      } else {
+        const disconnect = element("button", "Disconnect", "btn btn-outline");
+        disconnect.type = "button";
+        disconnect.addEventListener("click", async () => {
+          const choice = await askDisconnectChoice();
+          if (!choice) return;
+          const removeData = choice === "remove";
+          disconnect.disabled = true;
+          try {
+            await callFunction("canvas-connect", { action: "disconnect", accountId: activeAccountId, deleteImportedTasks: removeData });
+            if (removeData) accounts = accounts.filter(a => a.CanvasAccountID !== activeAccountId);
+            else accounts = accounts.map(a => a.CanvasAccountID === activeAccountId ? { ...a, IsConnected: false } : a);
+            connected = false; clearAccountState(); showInterface(section);
+            message(section, removeData ? "Connection and its Coursewise data removed." : "Canvas disconnected. Imported assignments remain in Coursewise.");
+          } catch (error) { message(section, error.message, true); disconnect.disabled = false; }
+        });
+        actions.appendChild(disconnect);
+      }
+    }
+    manager.appendChild(actions);
+
     if (connected) {
       content.innerHTML = `
         <div class="cw-canvas-identity">
@@ -1351,40 +1475,30 @@
         </div>
       `;
 
+      content.prepend(manager);
+
+      const addForm = document.createElement("form");
+      addForm.className = "form cw-canvas-add-form";
+      addForm.innerHTML = `<h3>Add another Canvas connection</h3><label class="field"><span>Canvas Calendar Feed URL</span><input type="url" name="feedUrl" required autocomplete="off" spellcheck="false" placeholder="https://your-school.instructure.com/feeds/calendars/..." /></label><label class="field"><span>Label (optional)</span><input type="text" name="label" maxlength="50" autocomplete="off" placeholder="Defaults to the school subdomain" /></label><button type="submit" class="btn btn-outline">Connect another Canvas</button>`;
+      addForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = addForm.querySelector("button[type=submit]");
+        button.disabled = true;
+        try {
+          const result = await callFunction("canvas-connect", { action: "connect", feedUrl: addForm.elements.feedUrl.value.trim(), label: addForm.elements.label.value.trim() });
+          accounts = [...accounts.filter(a => a.CanvasAccountID !== result.account.CanvasAccountID), result.account]; activeAccountId = result.account.CanvasAccountID; connected = true;
+          clearAccountState(); showInterface(section); message(section, "Canvas connection added."); await previewCanvas(section);
+        } catch (error) { message(section, error.message, true); button.disabled = false; }
+      });
+      content.appendChild(addForm);
+
       content.querySelector("#cw-preview-button")
         .addEventListener(
           "click",
           () => previewCanvas(section)
         );
 
-      const disconnect =
-        content.querySelector("#cw-disconnect");
-
-      disconnect.addEventListener("click", async () => {
-        if (!confirm("Disconnect your Canvas calendar?")) {
-          return;
-        }
-
-        disconnect.disabled = true;
-
-        try {
-          await callCanvas("disconnect");
-          connected = false;
-          choices.clear();
-          coursePreferences.clear();
-          reviewCache.clear();
-          editedSelections.clear();
-          courseDestinations.clear();
-          courseNewNames.clear();
-          saveDirty = false;
-          previewData = null;
-          showInterface(section);
-          message(section, "Canvas disconnected.");
-        } catch (error) {
-          message(section, error.message, true);
-          disconnect.disabled = false;
-        }
-      });
+      content.querySelector("#cw-disconnect")?.remove();
 
     } else {
       content.innerHTML = `
@@ -1417,10 +1531,17 @@
         </form>
       `;
 
+      content.prepend(manager);
+
       window.mountCanvasGuide?.(content);
 
       const form =
         content.querySelector("#cw-canvas-form");
+
+      const labelInput = document.createElement("div");
+      labelInput.className = "field";
+      labelInput.innerHTML = `<label for="cw-canvas-label">Connection label (optional)</label><input type="text" id="cw-canvas-label" maxlength="50" autocomplete="off" placeholder="Defaults to the school subdomain" />`;
+      form.querySelector("button[type=submit]").before(labelInput);
 
       form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -1432,8 +1553,11 @@
         message(section, "Connecting to Canvas...");
 
         try {
-          await callCanvas("connect", input.value.trim());
+          const result = await callFunction("canvas-connect", { action: "connect", feedUrl: input.value.trim(), label: form.querySelector("#cw-canvas-label").value.trim() });
           input.value = "";
+          form.querySelector("#cw-canvas-label").value = "";
+          accounts = [...accounts.filter(a => a.CanvasAccountID !== result.account.CanvasAccountID), result.account];
+          activeAccountId = result.account.CanvasAccountID;
           connected = true;
           choices.clear();
           coursePreferences.clear();
@@ -1482,7 +1606,9 @@
 
       if (!section.isConnected) return;
 
-      connected = Boolean(result.connected);
+      accounts = Array.isArray(result.accounts) ? result.accounts : [];
+      activeAccountId = accounts.find(a => a.IsConnected)?.CanvasAccountID || accounts[0]?.CanvasAccountID || null;
+      connected = Boolean(accounts.find(a => a.CanvasAccountID === activeAccountId)?.IsConnected);
       showInterface(section);
 
     } catch (error) {
