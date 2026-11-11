@@ -450,40 +450,64 @@
     </button>
   `;
 
+  const FLAME = '<svg viewBox="0 0 24 28" aria-hidden="true"><path fill="currentColor" d="M12 1c1.2 4.6 7.5 7.4 7.5 14.2A7.5 7.5 0 0 1 12 27a7.5 7.5 0 0 1-7.5-11.8c0 2.3 1.4 3.9 3 4.3C6.8 14 9 5.5 12 1z"/></svg>';
+  const CIRCLE_MAX = 4;
+
+  // Today circle: tapping a friend opens their profile. On devices with a mouse, hovering shows a quick Cheer button.
+  // The flame is orange when the friend has finished a task today and gray when they haven't yet.
+  function circleTile(p) {
+    const done = (Number(p.today) || 0) > 0;
+    const streak = Math.max(0, Number(p.streak) || 0);
+    const first = String(p.name || p.handle || '').split(' ')[0];
+    const label = `${p.name}, ${streak ? `${streak}-day streak` : 'no streak'}${done ? ', finished a task today' : ''}. Open profile`;
+    return `<div class="cw-f-tile-wrap">
+        <button type="button" class="cw-f-tile${done ? ' is-done' : ''}" data-friend-detail="${esc(p.id)}" aria-label="${esc(label)}">
+          <span class="cw-f-ring">${avatar(p)}</span>
+          <span class="cw-f-tile-name">${esc(first)}</span>
+          <span class="cw-f-tile-streak"${streak ? ` title="${done ? 'Finished a task today' : 'Nothing finished yet today'}"` : ''}>${streak ? `${FLAME}${streak}` : '&nbsp;'}</span>
+        </button>
+        ${p.cheered ? '' : `<button type="button" class="cw-f-quick-cheer" data-friend-cheer="${esc(p.id)}" aria-label="Cheer for ${esc(p.name)}" title="Cheer for ${esc(first)}"><span aria-hidden="true">👏</span></button>`}
+      </div>`;
+  }
+
+  function requestRow() {
+    const requests = people().filter(p => p.state === 'request');
+    if (!requests.length) return '';
+    const p = requests[0], more = requests.length - 1;
+    return `<div class="cw-f-invite">
+        ${avatar(p)}
+        <span class="cw-f-invite-copy"><b>${esc(p.name)}</b><span>Friend request${more ? ` · <button type="button" class="cw-f-invite-more" data-friends-open="requests">+${more} more</button>` : ''}</span></span>
+        <button type="button" class="btn btn-outline" data-friend-action="decline" data-person="${esc(p.id)}" aria-label="Decline ${esc(p.name)}">Decline</button>
+        <button type="button" class="btn btn-primary" data-friend-action="accept" data-person="${esc(p.id)}" aria-label="Accept ${esc(p.name)}">Accept</button>
+      </div>`;
+  }
+
   function cardBody() {
+    const list = friends();
+    const overflow = list.length > CIRCLE_MAX;
+    const shown = overflow ? list.slice(0, CIRCLE_MAX - 1) : list;
     return `
       <div class="section-head">
-        <h2>Friends <span class="count">${friends().length}</span></h2>
+        <h2>Friends <span class="count">${list.length}</span></h2>
       </div>
-      <p class="cw-f-subtitle">A little company along the way.</p>
-      <div class="cw-f-home-list">
-        ${
-          friends().length
-            ? friends().slice(0,3).map(p=>`
-                <div class="cw-f-person" data-friend-row="${esc(p.id)}">
-                  ${avatarLink(p)}
-                  <div class="cw-f-person-copy">
-                    <button type="button" class="cw-f-person-link" data-friend-detail="${esc(p.id)}">${esc(p.name)}</button>
-                  </div>
-                  ${cheer(p)}
-                </div>
-              `).join('')
-            : '<p class="cw-f-empty">Add a friend to cheer each other on!</p>'
-        }
-      </div>
-      <p class="cw-f-card-feedback sr-only" role="status" aria-live="polite"></p>
-      ${
-        count('request')
-          ? `<button class="cw-f-request" data-friends-open="requests">
-               <span><b>${count('request')}</b> friend requests</span>
-               <span aria-hidden="true">→</span>
-             </button>`
-          : ''
-      }
       <div class="cw-f-card-actions">
         <button class="btn btn-outline" data-friends-open="friends">View friends</button>
         <button class="btn btn-primary" data-friends-open="add">+ Add friend</button>
       </div>
+      ${
+        list.length
+          ? `<div class="cw-f-circle">${shown.map(circleTile).join('')}${
+              overflow
+                ? `<button type="button" class="cw-f-tile cw-f-tile-more" data-friends-open="friends" aria-label="See all ${list.length} friends">
+                     <span class="cw-f-ring"><span class="cw-f-avatar cw-f-more-face">+${list.length - shown.length}</span></span>
+                     <span class="cw-f-tile-name">More</span><span class="cw-f-tile-streak">&nbsp;</span>
+                   </button>`
+                : ''
+            }</div>`
+          : '<p class="cw-f-empty">Add a friend to cheer each other on!</p>'
+      }
+      ${requestRow()}
+      <p class="cw-f-card-feedback sr-only" role="status" aria-live="polite"></p>
     `;
   }
 

@@ -41,7 +41,7 @@ The Today page is the main dashboard and gives users a quick overview of their d
 1. **Daily snapshot:** Displays how many tasks are left today, a short encouraging message, and how many tasks have been completed today.
 2. **Streak:** Shows current task-completion streak progress and reminds users when they need to finish a task to continue it.
 3. **Today:** Lists tasks due today, with controls to mark tasks complete or manage them.
-4. **Friends:** Sits beside the snapshot with a compact list where users can visit friends' profiles, send cheers, and open their friend list.
+4. **Friends:** Sits beside the snapshot as a row of friend avatars. Each friend's streak sits underneath, with an orange flame if they've finished a task today. Hovering a friend shows a quick Cheer button; tapping opens their profile. Friend requests can be accepted or declined right on the card.
 5. **Overdue:** Shows unfinished tasks with deadlines that have already passed.
 6. **This week:** Displays a seven-day overview with task counts, a small visual chart, and an agenda that can be grouped **By day** or **By list**.
 7. **Add task:** Allows users to create a task without leaving the dashboard.
