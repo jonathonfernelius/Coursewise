@@ -47,7 +47,15 @@
     .cw-canvas-account-manager label{font-size:13px;color:var(--muted-fg)}
     .cw-canvas-account-manager select{width:100%;min-height:42px;padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--fg)}
     .cw-canvas-account-actions{display:flex;flex-wrap:wrap;gap:8px}
-    .cw-canvas-add-form{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+    .cw-canvas-add{margin-top:18px;padding-top:12px;border-top:1px solid var(--border)}
+    .cw-canvas-add>summary{display:inline-flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:var(--muted-fg);cursor:pointer;list-style:none;border-radius:8px}
+    .cw-canvas-add>summary::-webkit-details-marker{display:none}
+    .cw-canvas-add>summary:hover{color:var(--fg)}
+    .cw-canvas-add>summary:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+    .cw-canvas-add>summary svg{width:14px;height:14px;transition:transform .2s}
+    .cw-canvas-add[open]>summary svg{transform:rotate(90deg)}
+    .cw-canvas-add-form{margin-top:10px}
+    @media(prefers-reduced-motion:reduce){.cw-canvas-add>summary svg{transition:none}}
     .cw-canvas-disconnect-dialog{width:min(540px,calc(100vw - 32px));padding:24px;border:1px solid var(--border);border-radius:18px;background:var(--card);color:var(--fg);box-shadow:0 24px 80px #0005}
     .cw-canvas-disconnect-dialog::backdrop{background:#1119;backdrop-filter:blur(2px)}
     .cw-canvas-disconnect-dialog p{color:var(--muted-fg);line-height:1.55}
@@ -1277,6 +1285,7 @@
     }
   }
 
+  let canvasChangeSummary = "";
   async function previewCanvas(section) {
     const button =
       section.querySelector("#cw-preview-button");
@@ -1317,8 +1326,19 @@
           action: "sync-dates",
           items: []
         });
-        if (dateSync.datesUpdated > 0) {
+        if (dateSync.datesUpdated > 0 || dateSync.removed > 0) {
           await window.Tidy.reload();
+        }
+        // Same detailed banner as the background check, so a moved or deleted
+        // assignment is never changed silently.
+        const updatedItems = dateSync.updatedItems || [];
+        const removedItems = dateSync.removedItems || [];
+        if (updatedItems.length || removedItems.length) {
+          window.Tidy.ui?.canvasNotice?.({ updated: updatedItems, removed: removedItems });
+          const bits = [];
+          if (updatedItems.length) bits.push(`${updatedItems.length} due ${updatedItems.length === 1 ? "date" : "dates"} changed`);
+          if (removedItems.length) bits.push(`${removedItems.length} ${removedItems.length === 1 ? "assignment" : "assignments"} deleted on Canvas and removed`);
+          canvasChangeSummary = `Canvas update: ${bits.join(" and ")}. Details are at the top of the page.`;
         }
       }
 
@@ -1352,7 +1372,8 @@
       console.timeEnd("Canvas rendering");
 
 
-      message(section, "");
+      message(section, canvasChangeSummary);
+      canvasChangeSummary = "";
 
     } catch (error) {
       message(section, error.message, true);
@@ -1374,7 +1395,9 @@
 
     const manager = document.createElement("div");
     manager.className = "cw-canvas-account-manager";
-    if (accounts.length) {
+    // Switching and renaming only matter when there is more than one connection.
+    const multiple = accounts.length > 1;
+    if (multiple) {
       const selectLabel = element("label", "Canvas connections");
       selectLabel.htmlFor = "cw-canvas-account-select";
       const select = document.createElement("select");
@@ -1401,7 +1424,21 @@
     }
     const actions = element("div", "", "cw-canvas-account-actions");
     const current = accounts.find(a => a.CanvasAccountID === activeAccountId);
-    if (current) {
+    // Shared by the full actions row (several connections) and the quiet footer link (one).
+    async function disconnectActive(button) {
+      const choice = await askDisconnectChoice();
+      if (!choice) return;
+      const removeData = choice === "remove";
+      button.disabled = true;
+      try {
+        await callFunction("canvas-connect", { action: "disconnect", accountId: activeAccountId, deleteImportedTasks: removeData });
+        if (removeData) accounts = accounts.filter(a => a.CanvasAccountID !== activeAccountId);
+        else accounts = accounts.map(a => a.CanvasAccountID === activeAccountId ? { ...a, IsConnected: false } : a);
+        connected = false; clearAccountState(); showInterface(section);
+        message(section, removeData ? "Connection and its Coursewise data removed." : "Canvas disconnected. Imported assignments remain in Coursewise.");
+      } catch (error) { message(section, error.message, true); button.disabled = false; }
+    }
+    if (current && multiple) {
       const rename = element("button", "Rename connection", "btn btn-outline");
       rename.type = "button";
       rename.addEventListener("click", async () => {
@@ -1414,6 +1451,8 @@
         } catch (error) { message(section, error.message, true); }
       });
       actions.appendChild(rename);
+    }
+    if (current) {
       if (!current.IsConnected) {
         const reconnect = element("button", "Reconnect", "btn btn-primary");
         reconnect.type = "button";
@@ -1439,26 +1478,14 @@
           } catch (error) { message(section, error.message, true); }
         });
         actions.appendChild(remove);
-      } else {
+      } else if (multiple) {
         const disconnect = element("button", "Disconnect", "btn btn-outline");
         disconnect.type = "button";
-        disconnect.addEventListener("click", async () => {
-          const choice = await askDisconnectChoice();
-          if (!choice) return;
-          const removeData = choice === "remove";
-          disconnect.disabled = true;
-          try {
-            await callFunction("canvas-connect", { action: "disconnect", accountId: activeAccountId, deleteImportedTasks: removeData });
-            if (removeData) accounts = accounts.filter(a => a.CanvasAccountID !== activeAccountId);
-            else accounts = accounts.map(a => a.CanvasAccountID === activeAccountId ? { ...a, IsConnected: false } : a);
-            connected = false; clearAccountState(); showInterface(section);
-            message(section, removeData ? "Connection and its Coursewise data removed." : "Canvas disconnected. Imported assignments remain in Coursewise.");
-          } catch (error) { message(section, error.message, true); disconnect.disabled = false; }
-        });
+        disconnect.addEventListener("click", () => disconnectActive(disconnect));
         actions.appendChild(disconnect);
       }
     }
-    manager.appendChild(actions);
+    if (actions.childElementCount) manager.appendChild(actions);
 
     if (connected) {
       content.innerHTML = `
@@ -1475,11 +1502,14 @@
         </div>
       `;
 
-      content.prepend(manager);
+      if (manager.childElementCount) content.prepend(manager);
 
+      const addWrap = document.createElement("details");
+      addWrap.className = "cw-canvas-add";
+      addWrap.innerHTML = `<summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>Add another Canvas connection</summary>`;
       const addForm = document.createElement("form");
       addForm.className = "form cw-canvas-add-form";
-      addForm.innerHTML = `<h3>Add another Canvas connection</h3><label class="field"><span>Canvas Calendar Feed URL</span><input type="url" name="feedUrl" required autocomplete="off" spellcheck="false" placeholder="https://your-school.instructure.com/feeds/calendars/..." /></label><label class="field"><span>Label (optional)</span><input type="text" name="label" maxlength="50" autocomplete="off" placeholder="Defaults to the school subdomain" /></label><button type="submit" class="btn btn-outline">Connect another Canvas</button>`;
+      addForm.innerHTML = `<label class="field"><span>Canvas Calendar Feed URL</span><input type="url" name="feedUrl" required autocomplete="off" spellcheck="false" placeholder="https://your-school.instructure.com/feeds/calendars/..." /></label><label class="field"><span>Label (optional)</span><input type="text" name="label" maxlength="50" autocomplete="off" placeholder="Defaults to the school subdomain" /></label><button type="submit" class="btn btn-outline">Connect another Canvas</button>`;
       addForm.addEventListener("submit", async event => {
         event.preventDefault();
         const button = addForm.querySelector("button[type=submit]");
@@ -1490,7 +1520,9 @@
           clearAccountState(); showInterface(section); message(section, "Canvas connection added."); await previewCanvas(section);
         } catch (error) { message(section, error.message, true); button.disabled = false; }
       });
-      content.appendChild(addForm);
+      addWrap.appendChild(addForm);
+      addWrap.addEventListener("toggle", () => { if (addWrap.open) addForm.elements.feedUrl.focus(); });
+      content.appendChild(addWrap);
 
       content.querySelector("#cw-preview-button")
         .addEventListener(
@@ -1498,7 +1530,11 @@
           () => previewCanvas(section)
         );
 
-      content.querySelector("#cw-disconnect")?.remove();
+      // One connection: a quiet Disconnect link beside Check for updates.
+      // Several: Disconnect lives with the connection picker instead.
+      const footerDisconnect = content.querySelector("#cw-disconnect");
+      if (multiple) footerDisconnect?.closest(".cw-canvas-footer")?.remove();
+      else footerDisconnect?.addEventListener("click", () => disconnectActive(footerDisconnect));
 
     } else {
       content.innerHTML = `
@@ -1531,7 +1567,7 @@
         </form>
       `;
 
-      content.prepend(manager);
+      if (manager.childElementCount) content.prepend(manager);
 
       window.mountCanvasGuide?.(content);
 

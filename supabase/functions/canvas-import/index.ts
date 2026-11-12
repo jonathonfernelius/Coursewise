@@ -310,7 +310,7 @@ Deno.serve(async req => {
 
       const { data: existingTasks, error: readError } = taskIds.length
         ? await db.from("Tasks")
-            .select("TaskID,TaskDueDate,HasDueTime")
+            .select("TaskID,TaskDueDate,HasDueTime,IsComplete,Name")
             .eq("UserID", profile.UserID)
             .eq("IsAssignment", true)
             .in("TaskID", taskIds)
@@ -322,25 +322,58 @@ Deno.serve(async req => {
         TaskID: string;
         TaskDueDate: string | null;
         HasDueTime: boolean | null;
+        IsComplete: boolean | null;
+        Name: string | null;
       }>(
         (existingTasks || []).map(t => [
           String(t.TaskID),
           {
             TaskID: String(t.TaskID),
             TaskDueDate: t.TaskDueDate,
-            HasDueTime: t.HasDueTime
+            HasDueTime: t.HasDueTime,
+            IsComplete: t.IsComplete,
+            Name: t.Name
           }
         ])
       );
       let datesUpdated = 0;
       let checked = 0;
+      const removedUIDs: string[] = [];
+      const removedTaskIds: string[] = [];
+      const removedItems: Array<{ name: string; due: string | null; hasTime: boolean }> = [];
+      const updatedItems: Array<{
+        name: string;
+        oldDue: string | null; oldHasTime: boolean;
+        newDue: string; newHasTime: boolean;
+      }> = [];
+
+      // Canvas feeds drop old events over time, so a missing OLD event is
+      // normal. A missing UPCOMING event means the instructor deleted or
+      // unpublished it. Only unfinished tasks due after this cutoff are
+      // removed; finished ones are kept as the user's record.
+      const removalCutoff = Date.now() - 2 * 24 * 60 * 60 * 1000;
 
       for (const [uid, taskId] of imported) {
         const event = events.get(uid);
         const task = current.get(String(taskId));
-        // Calendar feeds do not always contain older or hidden events.
-        // Never delete or overwrite a task when its event isn't present.
-        if (!event || !task) continue;
+        if (!task) continue;
+
+        if (!event) {
+          const due = task.TaskDueDate == null
+            ? NaN : new Date(task.TaskDueDate).getTime();
+          // An empty feed is a Canvas glitch, never "everything was deleted".
+          if (events.size > 0 && !task.IsComplete &&
+              Number.isFinite(due) && due >= removalCutoff) {
+            removedUIDs.push(uid);
+            removedTaskIds.push(String(taskId));
+            removedItems.push({
+              name: task.Name || "Untitled assignment",
+              due: task.TaskDueDate,
+              hasTime: Boolean(task.HasDueTime)
+            });
+          }
+          continue;
+        }
         checked++;
 
         const currentTime = task.TaskDueDate == null
@@ -365,9 +398,57 @@ Deno.serve(async req => {
           throw new Error("Could not refresh an existing assignment date.");
         }
         datesUpdated++;
+        // Finished assignments still get the new date, but aren't announced.
+        if (!task.IsComplete) {
+          updatedItems.push({
+            name: task.Name || event.title,
+            oldDue: task.TaskDueDate, oldHasTime: Boolean(task.HasDueTime),
+            newDue: event.due, newHasTime: event.hasTime
+          });
+        }
       }
 
-      return reply({ success: true, checked, datesUpdated });
+      let removed = 0;
+      if (removedTaskIds.length) {
+        // Unlink any repeating-series pointer before deleting.
+        const { error: unlinkError } = await db.from("Tasks")
+          .update({ SpawnedTaskID: null })
+          .eq("UserID", profile.UserID)
+          .in("SpawnedTaskID", removedTaskIds);
+        if (unlinkError) throw unlinkError;
+
+        const { error: mapDeleteError } = await db
+          .from("CanvasImportedTasks")
+          .delete()
+          .eq("AuthUserID", user.id)
+          .eq("CanvasAccountID", accountId)
+          .in("CanvasUID", removedUIDs);
+        if (mapDeleteError) throw mapDeleteError;
+
+        // Clear saved choices too, so a republished assignment shows up as new.
+        const { error: choiceDeleteError } = await db
+          .from("CanvasSelections")
+          .delete()
+          .eq("AuthUserID", user.id)
+          .eq("CanvasAccountID", accountId)
+          .in("CanvasUID", removedUIDs);
+        if (choiceDeleteError) throw choiceDeleteError;
+
+        const { data: deleted, error: taskDeleteError } = await db
+          .from("Tasks")
+          .delete()
+          .eq("UserID", profile.UserID)
+          .eq("IsAssignment", true)
+          .in("TaskID", removedTaskIds)
+          .select("TaskID");
+        if (taskDeleteError) throw taskDeleteError;
+        removed = deleted?.length || 0;
+      }
+
+      return reply({
+        success: true, checked, datesUpdated, removed,
+        updatedItems, removedItems: removed ? removedItems : []
+      });
     }
 
     let added = 0;

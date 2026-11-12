@@ -56,21 +56,75 @@
     arm(duration);
   }
 
-  // Banner shown once per session when Canvas has items you haven't reviewed yet. It sits outside #main so page re-renders don't remove it.
-  function canvasNotice(count) {
+  // One banner that sums up everything Canvas changed: new items to review, moved due
+  // dates, and deleted assignments. It sits outside #main so page re-renders don't remove it.
+  // Moved and deleted assignments are remembered for this tab until the banner is closed,
+  // so a later background check doesn't wipe out news the person hasn't seen yet.
+  const NOTICE_KEY = "cw-canvas-pending-changes";
+  function pendingChanges() {
+    try { const v = JSON.parse(sessionStorage.getItem(NOTICE_KEY) || "{}"); return { updated: v.updated || [], removed: v.removed || [], newCount: Number(v.newCount) || 0 }; }
+    catch { return { updated: [], removed: [], newCount: 0 }; }
+  }
+  function savePending(v) { try { sessionStorage.setItem(NOTICE_KEY, JSON.stringify(v)); } catch { /* storage unavailable */ } }
+  function canvasDue(iso, hasTime) {
+    if (!iso) return "no date";
+    if (!hasTime) return T.fmtDate(iso.slice(0, 10));
+    const d = new Date(iso);
+    return `${T.fmtDate(T.toKey(d))}, ${T.fmtTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)}`;
+  }
+
+  // newCount: pass a number when it was just counted; leave it out to keep the last known count.
+  function canvasNotice({ newCount = null, updated = [], removed = [] } = {}) {
+    // Merge with earlier unseen changes; a newer date for the same assignment replaces the older one.
+    const prev = pendingChanges();
+    newCount = newCount ?? prev.newCount;
+    const byName = (list, item) => [...list.filter(x => x.name !== item.name), item];
+    let mergedUpdated = prev.updated, mergedRemoved = prev.removed;
+    for (const u of updated) {
+      const earlier = mergedUpdated.find(x => x.name === u.name);
+      mergedUpdated = byName(mergedUpdated, earlier ? { ...u, oldDue: earlier.oldDue, oldHasTime: earlier.oldHasTime } : u);
+    }
+    for (const r of removed) {
+      mergedUpdated = mergedUpdated.filter(x => x.name !== r.name);
+      mergedRemoved = byName(mergedRemoved, r);
+    }
+    savePending({ updated: mergedUpdated, removed: mergedRemoved, newCount });
+
     document.querySelector("#cw-auto-canvas-notice")?.remove();
+    const changeCount = mergedUpdated.length + mergedRemoved.length;
+    if (!newCount && !changeCount) return;
+
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const parts = [];
+    if (newCount) parts.push(`${plural(newCount, "new item", "new items")} to review`);
+    if (mergedUpdated.length) parts.push(`${plural(mergedUpdated.length, "due date", "due dates")} changed`);
+    if (mergedRemoved.length) parts.push(`${plural(mergedRemoved.length, "assignment", "assignments")} deleted`);
+    const headline = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
+
+    const lines = [
+      ...mergedUpdated.map(u => `<li><b>${esc(u.name)}</b> moved from ${esc(canvasDue(u.oldDue, u.oldHasTime))} to ${esc(canvasDue(u.newDue, u.newHasTime))}</li>`),
+      ...mergedRemoved.map(r => `<li><b>${esc(r.name)}</b> was deleted on Canvas and removed from your tasks</li>`)
+    ];
+    const detail = lines.length
+      ? `<ul class="cw-update-changes">${lines.join("")}</ul>`
+      : `<span>Choose what to add to your lists. Nothing is imported until you say so.</span>`;
+    const badge = newCount + changeCount;
+
     const wrap = document.createElement("div");
     wrap.id = "cw-auto-canvas-notice";
     wrap.className = "cw-update-wrap is-entering";
     wrap.innerHTML = `<div class="container"><div class="cw-update-inner"><aside class="cw-update" role="status">
-      <span class="cw-update-icon" aria-hidden="true">${icons.calendarPlus}<b class="cw-update-count">${count}</b></span>
-      <div class="cw-update-copy"><strong>${count} new Canvas ${count === 1 ? "item" : "items"} to review</strong><span>Choose what to add to your lists. Nothing is imported until you say so.</span></div>
-      <a class="btn btn-primary cw-update-cta" href="profile.html#canvas">Review items <i aria-hidden="true">→</i></a>
+      <span class="cw-update-icon" aria-hidden="true">${newCount ? icons.calendarPlus : icons.calendarCheck}<b class="cw-update-count">${badge}</b></span>
+      <div class="cw-update-copy"><strong>Canvas update: ${esc(headline)}</strong>${detail}</div>
+      ${newCount ? `<a class="btn btn-primary cw-update-cta" href="profile.html#canvas">Review new items <i aria-hidden="true">→</i></a>` : ""}
       <button type="button" class="icon-btn cw-update-x" aria-label="Hide this notice">${icons.close}</button>
     </aside></div></div>`;
     document.querySelector("#main")?.before(wrap);
     wrap.addEventListener("animationend", e => { if (e.target === wrap) wrap.classList.remove("is-entering"); });
+    const dismiss = () => savePending({ updated: [], removed: [], newCount: 0 });
+    wrap.querySelector(".cw-update-cta")?.addEventListener("click", dismiss);
     wrap.querySelector(".cw-update-x").onclick = () => {
+      dismiss();
       wrap.classList.remove("is-entering");
       wrap.classList.add("is-leaving");
       setTimeout(() => wrap.remove(), calmMotion() ? 20 : 400);
@@ -576,7 +630,7 @@
 
   const NAV = [["home.html", "Today", "home", "home"], ["todo.html", "To-do", "todo", "list"], ["calendar.html", "Calendar", "calendar", "calendar"], ["profile.html", "Profile", "profile", "user"]];
 
-  // Check Canvas once per signed-in browser tab session.
+  // Check Canvas when the app opens, then at most every 10 minutes per tab.
   // New assignments still require confirmation before importing.
   async function checkCanvasOnSessionStart(rerender) {
     const client = window.tidyClient;
@@ -592,8 +646,13 @@
         `cw-canvas-auto-check-${auth.user.id}`;
 
       try {
-        if (sessionStorage.getItem(sessionKey) === '1') return;
-        sessionStorage.setItem(sessionKey, '1');
+        const last = Number(sessionStorage.getItem(sessionKey)) || 0;
+        if (Date.now() - last < 10 * 60 * 1000) {
+          // Checked recently: just bring back the banner on this page if it wasn't closed.
+          canvasNotice({ newCount: pendingChanges().newCount });
+          return;
+        }
+        sessionStorage.setItem(sessionKey, String(Date.now()));
       } catch {
         // Allow the check if storage is unavailable.
       }
@@ -619,6 +678,9 @@
       if (!connections.length) return;
       let newCount = 0;
       let updatedCount = 0;
+      let removedCount = 0;
+      const updatedItems = [];
+      const removedItems = [];
       for (const account of connections) {
         const accountId = account.CanvasAccountID;
         const [preview, selections] = await Promise.all([
@@ -630,6 +692,9 @@
         if (imported.length) {
           const sync = await invoke('canvas-import', { action: 'sync-dates', items: [], accountId });
           updatedCount += Number(sync.datesUpdated) || 0;
+          removedCount += Number(sync.removed) || 0;
+          updatedItems.push(...(sync.updatedItems || []));
+          removedItems.push(...(sync.removedItems || []));
         }
         let priorImportFlag = false;
         try { priorImportFlag = localStorage.getItem(`coursewise-canvas-imported-${auth.user.id}-${accountId}`) === '1'; }
@@ -639,15 +704,11 @@
         const known = new Set([...imported.map(row => row.CanvasUID), ...(selections.choices || []).map(row => row.CanvasUID)]);
         newCount += preview.events.filter(event => event?.uid && !known.has(event.uid)).length;
       }
-      if (updatedCount > 0) {
+      if (updatedCount > 0 || removedCount > 0) {
         await T.reload(); rerender();
-        updateCard({
-          title: updatedCount === 1 ? 'Canvas due date updated' : 'Canvas due dates updated',
-          body: `${updatedCount} ${updatedCount === 1 ? 'assignment' : 'assignments'} synced with Canvas.`
-        });
       }
-      document.querySelector('#cw-auto-canvas-notice')?.remove();
-      if (newCount > 0) canvasNotice(newCount);
+      // One banner for everything: new items, moved dates and deleted assignments.
+      canvasNotice({ newCount, updated: updatedItems, removed: removedItems });
 
     } catch (error) {
       // Canvas errors never prevent Coursewise from opening.
@@ -699,5 +760,5 @@
     void checkCanvasOnSessionStart(rerender);
   }
 
-  window.Tidy.ui = { run, icons, toast, updateCard, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
+  window.Tidy.ui = { run, icons, toast, updateCard, canvasNotice, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
 })();
