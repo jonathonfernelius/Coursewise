@@ -6,19 +6,6 @@ Students often struggle to manage assignments and deadlines across multiple cour
 ## Entity-Relationship Diagram
 ![Project ERD](images/IS401ERD.png "ERD")
 
-## Data Flow Diagrams
-These diagrams illustrate how Coursewise connects users, Canvas, Gemini AI, and stored task data. The Level 0 diagram shows the overall system and its external connections, while Level 1 breaks the task-management workflow into individual processes and data stores.
-
-### Level 0 — Context Diagram
-![Coursewise Level 0 data flow diagram showing the user, Coursewise, Canvas Calendar Feed, and Gemini API](images/coursewise-level-0.png)
-
-*Figure: Level 0 shows the Canvas calendar URL supplied by the user, assignment information retrieved from Canvas, and optional Gemini-assisted import review.*
-
-### Level 1 — Task Management Data Flow
-![Coursewise Level 1 data flow diagram showing Canvas integration, assignment retrieval, AI analysis, task import, daily task management, and data stores](images/coursewise-level-1.png)
-
-*Figure: Level 1 expands Coursewise into five processes: configure Canvas integration, retrieve Canvas assignments, analyze assignment imports, import and organize tasks, and manage daily tasks. It also shows integration settings, imported-assignment records, tasks and lists, and profile/streak data.*
-
 ## Tech Stack
 - **Frontend:** Built using HTML, CSS, and JavaScript.
 - **Backend & Database:** Supabase handles authentication, persistent application data, and backend functions.

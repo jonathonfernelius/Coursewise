@@ -360,23 +360,8 @@ button.week-bar.is-today:hover .week-bar-fill{background:var(--primary-dark)}
 .cw-update-copy{flex:1;min-width:0;display:grid;gap:.15rem}
 .cw-update-copy strong{font-family:var(--font-display);font-size:1.05rem;font-weight:400}
 .cw-update-copy span{font-size:.86rem;color:var(--muted-fg)}
-.cw-update-head{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .7rem}
-.cw-update-chips{display:flex;flex-wrap:wrap;gap:.35rem}
-.cw-update-chip{padding:.15rem .6rem;border-radius:999px;font-size:.75rem;font-weight:500;background:var(--muted);color:var(--muted-fg)}
-.cw-update-chip.is-new{background:color-mix(in oklch,var(--primary) 12%,var(--card));color:var(--primary)}
-.cw-update-chip.is-moved,.cw-update-tag.is-moved{background:color-mix(in oklch,var(--sky) 13%,var(--card));color:color-mix(in oklch,var(--sky) 70%,var(--fg))}
-.cw-update-chip.is-deleted,.cw-update-tag.is-deleted{background:color-mix(in oklch,var(--rose) 12%,var(--card));color:color-mix(in oklch,var(--rose) 70%,var(--fg))}
-.cw-update-toggle{justify-self:start;display:inline-flex;align-items:center;gap:.25rem;margin-top:.15rem;padding:.15rem 0;border:0;background:transparent;color:var(--muted-fg);font:inherit;font-size:.82rem;cursor:pointer;border-radius:.4rem}
-.cw-update-toggle:hover{color:var(--fg)}
-.cw-update-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
-.cw-update-toggle svg,.cw-update-toggle i{width:.9rem;height:.9rem;transition:transform .2s}
-.cw-update-toggle[aria-expanded="true"] svg,.cw-update-toggle[aria-expanded="true"] i{transform:rotate(90deg)}
-.cw-update-changes{list-style:none;margin:.35rem 0 0;padding:0;display:grid;gap:.3rem;max-height:9.5rem;overflow-y:auto;font-size:.84rem}
-.cw-update-change{display:flex;align-items:center;gap:.5rem;min-width:0}
-.cw-update-tag{flex:none;padding:.05rem .45rem;border-radius:.4rem;font-size:.7rem;font-weight:500}
-.cw-update-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg)}
-.cw-update-when{flex:none;color:var(--muted-fg);font-size:.78rem;white-space:nowrap}
-@media(prefers-reduced-motion:reduce){.cw-update-toggle svg,.cw-update-toggle i{transition:none}}
+.cw-update-changes{margin:.2rem 0 0;padding-left:1.1rem;display:grid;gap:.2rem;font-size:.86rem;color:var(--muted-fg)}
+.cw-update-changes b{font-weight:600;color:var(--fg, inherit)}
 .cw-update-cta{flex:none;white-space:nowrap}
 .cw-update-cta i{display:inline-block;font-style:normal;transition:transform .2s}
 .cw-update-cta:hover i{transform:translateX(3px)}

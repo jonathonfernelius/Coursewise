@@ -117,31 +117,20 @@
     if (!newCount && !changeCount) return;
 
     const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-    // Short count chips instead of one long sentence.
-    const chips = [
-      newCount ? `<span class="cw-update-chip is-new">${plural(newCount, "new item", "new items")}</span>` : "",
-      updatedTotal ? `<span class="cw-update-chip is-moved">${updatedTotal} moved</span>` : "",
-      removedTotal ? `<span class="cw-update-chip is-deleted">${removedTotal} deleted</span>` : ""
-    ].join("");
+    const parts = [];
+    if (newCount) parts.push(`${plural(newCount, "new item", "new items")} to review`);
+    if (updatedTotal) parts.push(`${plural(updatedTotal, "due date", "due dates")} changed`);
+    if (removedTotal) parts.push(`${plural(removedTotal, "assignment", "assignments")} deleted`);
+    const headline = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
 
-    // One line per change: a tag, the name (cut off with … when long; hover for all of it), and dates for moves.
-    const row = (tag, kind, name, extra = "") => `<li class="cw-update-change">
-        <span class="cw-update-tag is-${kind}">${tag}</span>
-        <span class="cw-update-name"${name ? ` title="${esc(name)}"` : ""}>${name ? esc(name) : "An assignment"}</span>
-        ${extra ? `<span class="cw-update-when">${extra}</span>` : ""}
-      </li>`;
     const lines = [
-      ...mergedUpdated.map(u => row("Moved", "moved", u.name, `${esc(canvasDue(u.oldDue, u.oldHasTime))} → ${esc(canvasDue(u.newDue, u.newHasTime))}`)),
-      ...mergedRemoved.map(r => row("Deleted", "deleted", r.name)),
-      ...Array.from({ length: Math.min(unnamedUpdated, 20) }, () => row("Moved", "moved", "", "matches Canvas now")),
-      ...Array.from({ length: Math.min(unnamedRemoved, 20) }, () => row("Deleted", "deleted", ""))
+      ...mergedUpdated.map(u => `<li><b>${esc(u.name)}</b> moved from ${esc(canvasDue(u.oldDue, u.oldHasTime))} to ${esc(canvasDue(u.newDue, u.newHasTime))}</li>`),
+      ...mergedRemoved.map(r => `<li><b>${esc(r.name)}</b> was deleted on Canvas and removed from your tasks</li>`),
+      ...(unnamedUpdated ? [`<li>${unnamedUpdated === 1 ? "An assignment's due date was" : `${unnamedUpdated} assignments' due dates were`} updated to match Canvas</li>`] : []),
+      ...(unnamedRemoved ? [`<li>${unnamedRemoved === 1 ? "An assignment was" : `${unnamedRemoved} assignments were`} deleted on Canvas and removed from your tasks</li>`] : [])
     ];
-    const detailsId = "cw-update-details";
     const detail = lines.length
-      ? `<button type="button" class="cw-update-toggle" aria-expanded="false" aria-controls="${detailsId}">
-           <span>Show ${plural(lines.length, "change", "changes")}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-         </button>
-         <ul class="cw-update-changes" id="${detailsId}" hidden>${lines.join("")}</ul>`
+      ? `<ul class="cw-update-changes">${lines.join("")}</ul>`
       : `<span>Choose what to add to your lists. Nothing is imported until you say so.</span>`;
     const badge = newCount + changeCount;
 
@@ -150,19 +139,12 @@
     wrap.className = "cw-update-wrap is-entering";
     wrap.innerHTML = `<div class="container"><div class="cw-update-inner"><aside class="cw-update" role="status">
       <span class="cw-update-icon" aria-hidden="true">${newCount ? icons.calendarPlus : icons.calendarCheck}<b class="cw-update-count">${badge}</b></span>
-      <div class="cw-update-copy"><div class="cw-update-head"><strong>Canvas update</strong><span class="cw-update-chips">${chips}</span></div>${detail}</div>
+      <div class="cw-update-copy"><strong>Canvas update: ${esc(headline)}</strong>${detail}</div>
       ${newCount ? `<a class="btn btn-primary cw-update-cta" href="profile.html#canvas">Review new items <i aria-hidden="true">→</i></a>` : ""}
       <button type="button" class="icon-btn cw-update-x" aria-label="Hide this notice">${icons.close}</button>
     </aside></div></div>`;
     document.querySelector("#main")?.before(wrap);
     wrap.addEventListener("animationend", e => { if (e.target === wrap) wrap.classList.remove("is-entering"); });
-    const toggle = wrap.querySelector(".cw-update-toggle");
-    toggle?.addEventListener("click", () => {
-      const open = toggle.getAttribute("aria-expanded") !== "true";
-      toggle.setAttribute("aria-expanded", String(open));
-      wrap.querySelector(".cw-update-changes").hidden = !open;
-      toggle.querySelector("span").textContent = open ? "Hide changes" : `Show ${plural(lines.length, "change", "changes")}`;
-    });
     const dismiss = () => savePending({ updated: [], removed: [], newCount: 0, unnamedUpdated: 0, unnamedRemoved: 0 });
     wrap.querySelector(".cw-update-cta")?.addEventListener("click", dismiss);
     wrap.querySelector(".cw-update-x").onclick = () => {
