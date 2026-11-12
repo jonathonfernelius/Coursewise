@@ -415,22 +415,24 @@ const dragon = `
     stroke-width="3" stroke-linejoin="round"/>
 
   <!-- One golden storybook wing behind the body. -->
-  <path d="M155 136
-    Q144 96 126 71
-    Q148 79 165 94
-    Q180 68 184 40
-    Q201 62 201 90
-    Q226 75 246 78
-    Q228 102 211 137
-    Q189 157 155 136Z"
-    fill="#e9ae61" stroke="#754332"
-    stroke-width="4" stroke-linejoin="round"/>
+  <g transform="translate(-12 10)">
+    <path d="M155 136
+      Q144 96 126 71
+      Q148 79 165 94
+      Q180 68 184 40
+      Q201 62 201 90
+      Q226 75 246 78
+      Q228 102 211 137
+      Q189 157 155 136Z"
+      fill="#e9ae61" stroke="#754332"
+      stroke-width="4" stroke-linejoin="round"/>
 
-  <path d="M162 132 Q164 109 165 94
-    M181 139 Q184 108 184 45
-    M197 133 Q211 98 242 80"
-    stroke="#c77c4a" stroke-width="3"
-    stroke-linecap="round"/>
+    <path d="M162 132 Q164 109 165 94
+      M181 139 Q184 108 184 45
+      M197 133 Q211 98 242 80"
+      stroke="#c77c4a" stroke-width="3"
+      stroke-linecap="round"/>
+  </g>
 
   <!-- Back feet. -->
   <path d="M126 176 L124 205
@@ -495,13 +497,13 @@ const dragon = `
     stroke="#f5d58e" stroke-width="2.5"
     stroke-linecap="round"/>
 
-  <!-- Two small horns. -->
-  <path d="M226 72
-    Q223 49 236 43
-    Q232 58 247 65Z
-    M250 69
-    Q252 46 267 46
-    Q260 58 266 76Z"
+  <!-- Two more pronounced horns. -->
+  <path d="M225 73
+    Q219 40 236 31
+    Q236 54 249 66Z
+    M249 69
+    Q252 37 270 34
+    Q264 55 270 77Z"
     fill="#f5d18d" stroke="#754332"
     stroke-width="3.5" stroke-linejoin="round"/>
   
@@ -547,11 +549,12 @@ const dragon = `
   </g>
 
   <!-- Small golden back spikes. -->
-  <path d="M127 124
-    L120 111 L138 119
-    L140 105 L156 117"
+  <!-- <path d="M119 132
+    L111 120 L126 126
+    L129 112 L143 124
+    L146 113 L159 125"
     fill="#f5c06b" stroke="#754332"
-    stroke-width="2.5" stroke-linejoin="round"/>
+    stroke-width="2.5" stroke-linejoin="round"/> -->
 `;
 
 
@@ -571,10 +574,29 @@ function northPoleArtwork(state = "wrapping") {
   const elf = `<g transform="translate(222 96)">
     <rect x="69" y="83" width="42" height="39" rx="4" fill="#C94B52"/>
     <path d="M90 83V122M69 101H111" stroke="#F4C96F" stroke-width="6"/>
-    <path d="M10 51Q18 9 48 4L71 42L62 57Z" fill="#B93D48"/>
     <circle cx="68" cy="42" r="8" fill="#FFF1D8"/>
+    
     <circle cx="43" cy="62" r="27" fill="#F6C9A4"/>
-    <path d="M17 54Q43 42 69 54" stroke="#FFF1D8" stroke-width="9" stroke-linecap="round"/>
+
+    
+    <!-- Elf's head -->
+    <circle cx="43" cy="62" r="27" fill="#F6C9A4"/>
+
+    <!-- Entire red hat, drawn IN FRONT of the head -->
+    <path d="M10 51
+      Q18 9 48 4
+      L71 42
+      L72 57
+      Q43 42 14 59Z"
+      fill="#B93D48"/>
+
+    <!-- White fur brim sits in front of the red hat -->
+    <path d="M17 54Q43 42 69 54"
+      stroke="#FFF1D8"
+      stroke-width="9"
+      stroke-linecap="round"/>
+
+
     <path d="M18 65L5 54L10 77Z M68 65L81 54L76 77Z" fill="#F6C9A4"/>
     <circle cx="35" cy="62" r="2.5" fill="#342B26"/>
     <circle cx="52" cy="62" r="2.5" fill="#342B26"/>
@@ -621,10 +643,33 @@ function northPoleArtwork(state = "wrapping") {
     <rect x="51" y="33" width="75" height="12" rx="3" fill="#CF9868"/>
     <path d="M79 108Q67 91 80 78Q83 93 91 72Q107 91 99 108Z" fill="#F3B74E"/>
     <path d="M85 108Q79 96 90 88Q100 102 94 108Z" fill="#FFE39B"/>
-    <path d="M9 76Q-3 59 15 47Q27 19 46 24L54 63Z" fill="#B94C57"/>
+    
+    <!-- Sleeping elf's head -->
     <circle cx="45" cy="65" r="20" fill="#F5C9A4"/>
-    <path d="M26 57Q45 49 64 57" stroke="#FFF2DA" stroke-width="7" stroke-linecap="round"/>
-    <circle cx="54" cy="31" r="7" fill="#FFF2DA"/>
+
+    <!-- One continuous, floppy red sleeping cap -->
+    <path d="
+      M9 76
+      Q-3 59 15 47
+      Q27 19 46 24
+      Q52 24 54 31
+      Q50 40 57 46
+      Q63 49 65 56
+      Q45 46 25 59
+      Q18 68 9 76Z"
+      fill="#B94C57"/>
+
+    <!-- Soft white fur brim -->
+    <path d="M26 57Q45 49 64 57"
+      stroke="#FFF2DA"
+      stroke-width="7"
+      stroke-linecap="round"/>
+
+    <!-- Pom-pom attached to the cap -->
+    <circle cx="8" cy="73" r="7"
+      fill="#FFF2DA"/>  
+
+
     <path d="M33 65Q38 70 43 65M48 65Q53 70 58 65" stroke="#785048" stroke-width="2.5"/>
     <path d="M41 76Q46 80 51 76" stroke="#A16A5C" stroke-width="2"/>
     <path d="M22 88Q46 77 72 92L79 126H9Z" fill="#67916A"/>
