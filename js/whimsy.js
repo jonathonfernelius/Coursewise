@@ -216,6 +216,21 @@ const THEMES = {
     overdueEmpty:["The hoard has no forgotten tasks."],
     imported:"A messenger dragon brings new quests!",
     palette:["#c8794b","#e5ad59","#f0d48a"]
+  },
+  samurai: {
+    name:"Shogun Dynasty",
+    words:["The Daimyō’s Chronicle","Today’s Campaign",
+      "Duties Left Unattended","The Seven-Day March",
+      "The Order Book","The Campaign Calendar","The Clan Register",
+      "Fellow Bushi","Fellow Bushi","Form an Alliance","Petitions",
+      "Today’s Orders","Unscheduled Orders"],
+    cheer:"Commend an Ally",
+    messages:["Another task completed with discipline."],
+    rare:["Your effort earns the daimyō’s praise."],
+    empty:["The duty scroll is clear; rest well."],
+    overdueEmpty:["All past obligations are settled."],
+    imported:"A courier brings new duties!",
+    palette:["#332d2a","#913c32","#b69a68","#536273","#ead9b6"]
   }
 };
 
@@ -557,6 +572,39 @@ const dragon = `
     stroke-width="2.5" stroke-linejoin="round"/> -->
 `;
 
+/* Edo-inspired castle, rising sun, and clan crest in an ink-and-paper style. */
+const samuraiArt = `
+  <circle cx="276" cy="82" r="48" fill="#a5473d" opacity=".9"/>
+  <path d="M0 196Q63 166 124 190T245 184T360 180V240H0Z"
+    fill="#374454" opacity=".82"/>
+  <path d="M0 213Q82 187 154 211T294 204T360 198"
+    stroke="#202831" stroke-width="5" opacity=".7"/>
+  <g fill="#292b2b" stroke="#292b2b" stroke-linejoin="round">
+    <path d="M118 188V126H242V188Z"/>
+    <path d="M130 126Q180 104 230 126L220 136H140Z"/>
+    <path d="M140 111V85H220V111Z"/>
+    <path d="M132 85Q180 63 228 85L218 95H142Z"/>
+    <path d="M151 69V50H209V69Z"/>
+    <path d="M143 50Q180 34 217 50L208 59H152Z"/>
+    <path d="M173 37L180 25L187 37Z"/>
+  </g>
+  <g fill="#ead9b6" opacity=".94">
+    <rect x="152" y="145" width="15" height="22" rx="7"/>
+    <rect x="193" y="145" width="15" height="22" rx="7"/>
+    <rect x="171" y="166" width="18" height="22" rx="8"/>
+  </g>
+  <g transform="translate(74 101)" stroke="#27303a" stroke-width="5" fill="none" opacity=".85">
+    <path d="M0 59Q19 30 37 59Q55 30 74 59M37 59V93"/>
+    <path d="M7 38Q20 10 36 31Q52 9 67 38"/>
+  </g>
+  <g transform="translate(293 165)" fill="none" stroke="#f0dfbd" stroke-width="3" opacity=".88">
+    <circle r="21"/><circle r="14"/>
+    <path d="M0-14Q12 0 0 14Q-12 0 0-14Z" fill="#f0dfbd"/>
+  </g>
+  <path d="M24 224Q92 211 144 224M256 222Q306 208 348 220"
+    stroke="#242a30" stroke-width="4" stroke-linecap="round" opacity=".65"/>
+`;
+
 
 /* DECK THE DIVS — North Pole illustration. The lights and elf stay in one compact background. */
 function northPoleArtwork(state = "wrapping") {
@@ -779,6 +827,15 @@ const ART = {
       <path d="M60 180q30-35 60 0t60 0M60 205q30-35 60 0t60 0"/>
       <path d="M240 76q22-25 44 0t44 0M240 101q22-25 44 0t44 0"/>
     </g><g fill="#e7bd66"><circle cx="203" cy="183" r="7"/><circle cx="220" cy="194" r="5"/></g>`)
+  },
+  samurai:{
+    hero:svg(samuraiArt),
+    scene:svg(samuraiArt),
+    trim:svg(`<g fill="none" stroke="#42403a" stroke-width="4" stroke-linecap="round">
+      <circle cx="180" cy="120" r="48"/><circle cx="180" cy="120" r="35"/>
+      <path d="M180 85Q210 120 180 155Q150 120 180 85Z" fill="#9d3c32" stroke="#9d3c32"/>
+      <path d="M38 188Q95 166 150 187M210 187Q270 163 322 184"/>
+    </g>`)
   }
 };
 
@@ -1125,7 +1182,8 @@ const UPCOMING_EVENT_NAMES = {
   faeries: "The Seer's Scroll",
   sports: "Next on the Field",
   cars: "On the Starting Grid",
-  dragon: "Beyond the Hoard"
+  dragon: "Beyond the Hoard",
+  samurai: "Coming Engagements"
 };
 
 
@@ -1918,6 +1976,10 @@ window.CoursewiseWhimsy = {
     dragon: {
       cheer: "Send a Roar",
       tabs: ["Allies", "Recruit", "Summons"]
+    },
+    samurai: {
+      cheer: "Commend an Ally",
+      tabs: ["Fellow Bushi", "Form an Alliance", "Petitions"]
     }
   };
 

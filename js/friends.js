@@ -268,6 +268,22 @@
         "A baby dragon has attempted to eat your homework. It tasted like victory.",
         "The ancient dragons have declared you an honorary menace."
       ]
+    },
+
+    samurai: {
+      title: "A Message from the Clan",
+      low: [
+        "Every journey begins with one step. Your allies stand with you."
+      ],
+      mid: [
+        "Word of your steady progress is spreading."
+      ],
+      high: [
+        "The daimyō’s court has heard of your diligence."
+      ],
+      rare: [
+        "The shōgun has heard of your remarkable effort."
+      ]
     }
   };
 
