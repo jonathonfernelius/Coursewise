@@ -340,10 +340,7 @@
   }
 
   function cheerDisplay(notification) {
-    const settings = window.CoursewiseWhimsy?.config?.();
-    const theme = settings?.enabled
-      ? THEMED_CHEERS[settings.theme]
-      : null;
+    const theme = THEMED_CHEERS[notification.sender_theme] || null;
 
     const sender = notification.sender || "A friend";
     const original = notification.message || "";
@@ -796,7 +793,16 @@
     try {
       const {error:e}=await db.rpc(
         'coursewise_friend_action',
-        {p_action:type,p_target:target||null}
+        {
+          p_action: type,
+          p_target: target || null,
+          ...(type === 'cheer' ? {
+            p_theme: (() => {
+              const choice = window.CoursewiseWhimsy?.config?.();
+              return choice?.enabled ? choice.theme : null;
+            })()
+          } : {})
+        }
       );
 
       if(e)throw e;
