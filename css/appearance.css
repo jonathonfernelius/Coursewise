@@ -102,3 +102,41 @@ html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero p,
 html[data-appearance="dark"][data-whimsy]:not([data-whimsy="off"]) .hero .hero-stat span {
   opacity: 1;
 }
+
+
+/* ==========================================
+   WHIMSY — LESS CROWDED BACKGROUND PATTERNS
+   ========================================== */
+
+/* Give existing illustrated icons more room.
+   Applies to the nine animated themes only. */
+html:is(
+  [data-whimsy="cottage"],
+  [data-whimsy="pirate"],
+  [data-whimsy="space"],
+  [data-whimsy="kingdom"],
+  [data-whimsy="west"],
+  [data-whimsy="dinos"],
+  [data-whimsy="faeries"],
+  [data-whimsy="sports"],
+  [data-whimsy="cars"]
+) body[data-page] #main::before {
+  background-size: 720px 540px !important;
+}
+
+/* Slightly smaller pattern tiles on mobile. */
+@media (max-width: 800px) {
+  html:is(
+    [data-whimsy="cottage"],
+    [data-whimsy="pirate"],
+    [data-whimsy="space"],
+    [data-whimsy="kingdom"],
+    [data-whimsy="west"],
+    [data-whimsy="dinos"],
+    [data-whimsy="faeries"],
+    [data-whimsy="sports"],
+    [data-whimsy="cars"]
+  ) body[data-page] #main::before {
+    background-size: 600px 450px !important;
+  }
+}
