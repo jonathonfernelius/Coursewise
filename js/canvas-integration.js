@@ -47,6 +47,9 @@
     .cw-canvas-account-manager label{font-size:13px;color:var(--muted-fg)}
     .cw-canvas-account-manager select{width:100%;min-height:42px;padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--fg)}
     .cw-canvas-account-actions{display:flex;flex-wrap:wrap;gap:8px}
+    .cw-sync-change-list{margin:4px 0 0;padding-left:18px;display:grid;gap:3px;font-size:13px;color:var(--muted-fg)}
+    .cw-sync-changes+.cw-saved-status{margin-top:8px}
+    #cw-canvas-preview>.cw-sync-changes:first-child+h3{margin-top:14px}
     .cw-canvas-add{margin-top:18px;padding-top:12px;border-top:1px solid var(--border)}
     .cw-canvas-add>summary{display:inline-flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:var(--muted-fg);cursor:pointer;list-style:none;border-radius:8px}
     .cw-canvas-add>summary::-webkit-details-marker{display:none}
@@ -986,14 +989,17 @@
     const heading = element("h3", "Review your import");
     const description = element("p", "Choose what to bring into Coursewise. Nothing is imported until you confirm.", "muted");
     container.append(heading, description);
+    const synced = lastSyncChanges;
+    if (synced) container.prepend(syncChangesCard(synced));
     if (review.upToDate) {
       const notice = element("div", "", "cw-saved-status");
       notice.setAttribute("role", "status");
       notice.insertAdjacentHTML("beforeend", '<span class="cw-saved-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>');
       const copy = element("div", "");
-      copy.append(element("strong", "You’re up to date"), element("p", "Nothing new since your last check. Your earlier choices are saved."));
+      copy.append(element("strong", synced ? "No new items to import" : "You’re up to date"), element("p", "Nothing new since your last check. Your earlier choices are saved."));
       notice.appendChild(copy);
-      container.prepend(notice);
+      if (synced) container.querySelector(".cw-sync-changes").after(notice);
+      else container.prepend(notice);
     }
     if (review.error) {
       const warning = element("div", "");
@@ -1007,7 +1013,7 @@
       container.appendChild(element("p", "AI review complete. Check the suggestions before importing.", "cw-review-note"));
     }
     if (!fresh.length) {
-      container.appendChild(element("p", "You’re up to date. There are no new items to import.", "cw-review-note"));
+      container.appendChild(element("p", synced ? "There are no new items to import." : "You’re up to date. There are no new items to import.", "cw-review-note"));
       return;
     }
 
@@ -1249,6 +1255,31 @@
     if (section.isConnected && run === aiRunId) renderPreview(section, events, imported, {mode: "ai", reviewed, total: scope.length, error: errorMessage, canGoBack: true});
   }
 
+  // Card listing what the last "Check for updates" changed (moved or deleted assignments).
+  function syncChangesCard(synced) {
+    const changed = element("div", "", "cw-saved-status cw-sync-changes");
+    changed.setAttribute("role", "status");
+    changed.insertAdjacentHTML("beforeend", '<span class="cw-saved-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4m8-4v4M4 10h16m-11 4 2 2 4-4"/></svg></span>');
+    const copy = element("div", "");
+    const updatedTotal = synced.updated.length + synced.unnamedUpdated;
+    const removedTotal = synced.removed.length + synced.unnamedRemoved;
+    const bits = [];
+    if (updatedTotal) bits.push(`${updatedTotal} due ${updatedTotal === 1 ? "date" : "dates"} changed`);
+    if (removedTotal) bits.push(`${removedTotal} ${removedTotal === 1 ? "assignment" : "assignments"} deleted`);
+    copy.appendChild(element("strong", `Synced with Canvas: ${bits.join(" and ")}`));
+    const list = element("ul", "", "cw-sync-change-list");
+    const due = (iso, hasTime) => !iso ? "no date" : hasTime
+      ? new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+      : new Date(`${iso.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    for (const u of synced.updated) list.appendChild(element("li", `${u.name}: moved from ${due(u.oldDue, u.oldHasTime)} to ${due(u.newDue, u.newHasTime)}`));
+    for (const r of synced.removed) list.appendChild(element("li", `${r.name}: deleted on Canvas and removed from your tasks`));
+    if (synced.unnamedUpdated) list.appendChild(element("li", `${synced.unnamedUpdated === 1 ? "An assignment's due date was" : `${synced.unnamedUpdated} due dates were`} updated to match Canvas`));
+    if (synced.unnamedRemoved) list.appendChild(element("li", `${synced.unnamedRemoved === 1 ? "An assignment was" : `${synced.unnamedRemoved} assignments were`} deleted on Canvas and removed`));
+    copy.appendChild(list);
+    changed.appendChild(copy);
+    return changed;
+  }
+
   function showReviewChoice(section, events, imported, options = {}) {
     const container = section.querySelector("#cw-canvas-preview");
     container.replaceChildren();
@@ -1261,6 +1292,7 @@
       renderPreview(section, events, imported, {mode: "manual", upToDate: true});
       return;
     }
+    if (lastSyncChanges) container.appendChild(syncChangesCard(lastSyncChanges));
     const heading = newItems.length ? `${newItems.length} new item${newItems.length === 1 ? "" : "s"}` : "Everything is sorted";
     const note = newItems.length
       ? (sorted ? `Review before importing. ${sorted} you’ve already sorted ${sorted === 1 ? "is" : "are"} saved and won’t be asked about again.` : "Review before importing.")
@@ -1285,8 +1317,10 @@
     }
   }
 
-  let canvasChangeSummary = "";
+  // What the most recent "Check for updates" changed; shown at the top of the review panel.
+  let lastSyncChanges = null;
   async function previewCanvas(section) {
+    lastSyncChanges = null;
     const button =
       section.querySelector("#cw-preview-button");
 
@@ -1329,16 +1363,13 @@
         if (dateSync.datesUpdated > 0 || dateSync.removed > 0) {
           await window.Tidy.reload();
         }
-        // Same detailed banner as the background check, so a moved or deleted
-        // assignment is never changed silently.
-        const updatedItems = dateSync.updatedItems || [];
-        const removedItems = dateSync.removedItems || [];
-        if (updatedItems.length || removedItems.length) {
-          window.Tidy.ui?.canvasNotice?.({ updated: updatedItems, removed: removedItems });
-          const bits = [];
-          if (updatedItems.length) bits.push(`${updatedItems.length} due ${updatedItems.length === 1 ? "date" : "dates"} changed`);
-          if (removedItems.length) bits.push(`${removedItems.length} ${removedItems.length === 1 ? "assignment" : "assignments"} deleted on Canvas and removed`);
-          canvasChangeSummary = `Canvas update: ${bits.join(" and ")}. Details are at the top of the page.`;
+        // Same banner as the background check, plus a list in this panel,
+        // so a moved or deleted assignment is never changed silently.
+        const changes = window.Tidy.ui?.canvasChangesFromSync?.(dateSync) ||
+          { updated: dateSync.updatedItems || [], removed: dateSync.removedItems || [], unnamedUpdated: 0, unnamedRemoved: 0 };
+        if (changes.updated.length || changes.removed.length || changes.unnamedUpdated || changes.unnamedRemoved) {
+          window.Tidy.ui?.canvasNotice?.(changes);
+          lastSyncChanges = changes;
         }
       }
 
@@ -1372,8 +1403,7 @@
       console.timeEnd("Canvas rendering");
 
 
-      message(section, canvasChangeSummary);
-      canvasChangeSummary = "";
+      message(section, "");
 
     } catch (error) {
       message(section, error.message, true);

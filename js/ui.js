@@ -62,8 +62,11 @@
   // so a later background check doesn't wipe out news the person hasn't seen yet.
   const NOTICE_KEY = "cw-canvas-pending-changes";
   function pendingChanges() {
-    try { const v = JSON.parse(sessionStorage.getItem(NOTICE_KEY) || "{}"); return { updated: v.updated || [], removed: v.removed || [], newCount: Number(v.newCount) || 0 }; }
-    catch { return { updated: [], removed: [], newCount: 0 }; }
+    try {
+      const v = JSON.parse(sessionStorage.getItem(NOTICE_KEY) || "{}");
+      return { updated: v.updated || [], removed: v.removed || [], newCount: Number(v.newCount) || 0,
+        unnamedUpdated: Number(v.unnamedUpdated) || 0, unnamedRemoved: Number(v.unnamedRemoved) || 0 };
+    } catch { return { updated: [], removed: [], newCount: 0, unnamedUpdated: 0, unnamedRemoved: 0 }; }
   }
   function savePending(v) { try { sessionStorage.setItem(NOTICE_KEY, JSON.stringify(v)); } catch { /* storage unavailable */ } }
   function canvasDue(iso, hasTime) {
@@ -73,8 +76,23 @@
     return `${T.fmtDate(T.toKey(d))}, ${T.fmtTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`)}`;
   }
 
+  // Turns a sync-dates reply into banner input. An older canvas-import function only
+  // sends counts (no names); those still show up as "1 assignment deleted" etc.
+  function canvasChangesFromSync(sync = {}) {
+    const named = Array.isArray(sync.updatedItems) || Array.isArray(sync.removedItems);
+    if (!named && (sync.datesUpdated || sync.removed)) {
+      console.warn("Canvas sync returned counts without names. Redeploy the latest canvas-import function for named changes.");
+    }
+    return {
+      updated: sync.updatedItems || [],
+      removed: sync.removedItems || [],
+      unnamedUpdated: named ? 0 : Number(sync.datesUpdated) || 0,
+      unnamedRemoved: named ? 0 : Number(sync.removed) || 0
+    };
+  }
+
   // newCount: pass a number when it was just counted; leave it out to keep the last known count.
-  function canvasNotice({ newCount = null, updated = [], removed = [] } = {}) {
+  function canvasNotice({ newCount = null, updated = [], removed = [], unnamedUpdated = 0, unnamedRemoved = 0 } = {}) {
     // Merge with earlier unseen changes; a newer date for the same assignment replaces the older one.
     const prev = pendingChanges();
     newCount = newCount ?? prev.newCount;
@@ -88,22 +106,28 @@
       mergedUpdated = mergedUpdated.filter(x => x.name !== r.name);
       mergedRemoved = byName(mergedRemoved, r);
     }
-    savePending({ updated: mergedUpdated, removed: mergedRemoved, newCount });
+    unnamedUpdated += prev.unnamedUpdated;
+    unnamedRemoved += prev.unnamedRemoved;
+    savePending({ updated: mergedUpdated, removed: mergedRemoved, newCount, unnamedUpdated, unnamedRemoved });
 
     document.querySelector("#cw-auto-canvas-notice")?.remove();
-    const changeCount = mergedUpdated.length + mergedRemoved.length;
+    const updatedTotal = mergedUpdated.length + unnamedUpdated;
+    const removedTotal = mergedRemoved.length + unnamedRemoved;
+    const changeCount = updatedTotal + removedTotal;
     if (!newCount && !changeCount) return;
 
     const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
     const parts = [];
     if (newCount) parts.push(`${plural(newCount, "new item", "new items")} to review`);
-    if (mergedUpdated.length) parts.push(`${plural(mergedUpdated.length, "due date", "due dates")} changed`);
-    if (mergedRemoved.length) parts.push(`${plural(mergedRemoved.length, "assignment", "assignments")} deleted`);
+    if (updatedTotal) parts.push(`${plural(updatedTotal, "due date", "due dates")} changed`);
+    if (removedTotal) parts.push(`${plural(removedTotal, "assignment", "assignments")} deleted`);
     const headline = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0];
 
     const lines = [
       ...mergedUpdated.map(u => `<li><b>${esc(u.name)}</b> moved from ${esc(canvasDue(u.oldDue, u.oldHasTime))} to ${esc(canvasDue(u.newDue, u.newHasTime))}</li>`),
-      ...mergedRemoved.map(r => `<li><b>${esc(r.name)}</b> was deleted on Canvas and removed from your tasks</li>`)
+      ...mergedRemoved.map(r => `<li><b>${esc(r.name)}</b> was deleted on Canvas and removed from your tasks</li>`),
+      ...(unnamedUpdated ? [`<li>${unnamedUpdated === 1 ? "An assignment's due date was" : `${unnamedUpdated} assignments' due dates were`} updated to match Canvas</li>`] : []),
+      ...(unnamedRemoved ? [`<li>${unnamedRemoved === 1 ? "An assignment was" : `${unnamedRemoved} assignments were`} deleted on Canvas and removed from your tasks</li>`] : [])
     ];
     const detail = lines.length
       ? `<ul class="cw-update-changes">${lines.join("")}</ul>`
@@ -121,7 +145,7 @@
     </aside></div></div>`;
     document.querySelector("#main")?.before(wrap);
     wrap.addEventListener("animationend", e => { if (e.target === wrap) wrap.classList.remove("is-entering"); });
-    const dismiss = () => savePending({ updated: [], removed: [], newCount: 0 });
+    const dismiss = () => savePending({ updated: [], removed: [], newCount: 0, unnamedUpdated: 0, unnamedRemoved: 0 });
     wrap.querySelector(".cw-update-cta")?.addEventListener("click", dismiss);
     wrap.querySelector(".cw-update-x").onclick = () => {
       dismiss();
@@ -681,6 +705,8 @@
       let removedCount = 0;
       const updatedItems = [];
       const removedItems = [];
+      let unnamedUpdated = 0;
+      let unnamedRemoved = 0;
       for (const account of connections) {
         const accountId = account.CanvasAccountID;
         const [preview, selections] = await Promise.all([
@@ -693,8 +719,11 @@
           const sync = await invoke('canvas-import', { action: 'sync-dates', items: [], accountId });
           updatedCount += Number(sync.datesUpdated) || 0;
           removedCount += Number(sync.removed) || 0;
-          updatedItems.push(...(sync.updatedItems || []));
-          removedItems.push(...(sync.removedItems || []));
+          const changes = canvasChangesFromSync(sync);
+          updatedItems.push(...changes.updated);
+          removedItems.push(...changes.removed);
+          unnamedUpdated += changes.unnamedUpdated;
+          unnamedRemoved += changes.unnamedRemoved;
         }
         let priorImportFlag = false;
         try { priorImportFlag = localStorage.getItem(`coursewise-canvas-imported-${auth.user.id}-${accountId}`) === '1'; }
@@ -708,7 +737,7 @@
         await T.reload(); rerender();
       }
       // One banner for everything: new items, moved dates and deleted assignments.
-      canvasNotice({ newCount, updated: updatedItems, removed: removedItems });
+      canvasNotice({ newCount, updated: updatedItems, removed: removedItems, unnamedUpdated, unnamedRemoved });
 
     } catch (error) {
       // Canvas errors never prevent Coursewise from opening.
@@ -760,5 +789,5 @@
     void checkCanvasOnSessionStart(rerender);
   }
 
-  window.Tidy.ui = { run, icons, toast, updateCard, canvasNotice, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
+  window.Tidy.ui = { run, icons, toast, updateCard, canvasNotice, canvasChangesFromSync, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
 })();
