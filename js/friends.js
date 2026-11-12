@@ -268,22 +268,6 @@
         "A baby dragon has attempted to eat your homework. It tasted like victory.",
         "The ancient dragons have declared you an honorary menace."
       ]
-    },
-
-    samurai: {
-      title: "A Message from the Clan",
-      low: [
-        "Every journey begins with one step. Your allies stand with you."
-      ],
-      mid: [
-        "Word of your steady progress is spreading."
-      ],
-      high: [
-        "The daimyō’s court has heard of your diligence."
-      ],
-      rare: [
-        "The shōgun has heard of your remarkable effort."
-      ]
     }
   };
 
@@ -355,8 +339,41 @@
     return (hash >>> 0) % count;
   }
 
+  /* A cheer keeps the theme it was first shown in. Themes are applied when a cheer is
+     displayed (the server stores the plain message), so without this a dragon cheer
+     would turn plain whenever the theme is off, switched or not loaded on a page. */
+  const CHEER_THEMES_KEY = 'cw-f-cheer-themes-v1';
+  let cheerThemes = null;
+  function cheerThemeMap() {
+    if (cheerThemes) return cheerThemes;
+    try { cheerThemes = JSON.parse(localStorage.getItem(CHEER_THEMES_KEY) || '{}') || {}; }
+    catch { cheerThemes = {}; }
+    return cheerThemes;
+  }
+  function rememberCheerTheme(key, themeName) {
+    const map = cheerThemeMap();
+    if (map[key] === themeName) return;
+    map[key] = themeName;
+    // Keep the newest 300 so storage doesn't grow forever.
+    const keys = Object.keys(map);
+    for (const old of keys.slice(0, Math.max(0, keys.length - 300))) delete map[old];
+    try { localStorage.setItem(CHEER_THEMES_KEY, JSON.stringify(map)); } catch {}
+  }
+
   function cheerDisplay(notification) {
-    const theme = THEMED_CHEERS[notification.sender_theme] || null;
+    const settings = window.CoursewiseWhimsy?.config?.();
+    const themeKey = `${notification.sender}|${notification.created_at}`;
+    // The sender's theme is saved with each cheer on the server; that decides its look.
+    // Older cheers without one fall back to the theme they were first shown in here.
+    const senderTheme = notification.sender_theme;
+    const savedTheme = cheerThemeMap()[themeKey];
+    const themeName = 'sender_theme' in notification
+      ? (THEMED_CHEERS[senderTheme] ? senderTheme : null)
+      : THEMED_CHEERS[savedTheme]
+        ? savedTheme
+        : (settings?.enabled && THEMED_CHEERS[settings.theme] ? settings.theme : null);
+    const theme = themeName ? THEMED_CHEERS[themeName] : null;
+    const fromSender = Boolean(theme) && 'sender_theme' in notification;
 
     const sender = notification.sender || "A friend";
     const original = notification.message || "";
@@ -376,9 +393,16 @@
       ? bank[stableCheerIndex(notification, bank.length)]
       : original;
 
+    if (bank?.length) rememberCheerTheme(themeKey, themeName);
+
     return {
       title: `${theme.title} from ${sender}!`,
-      message
+      message,
+      // Themed in the history when the sender cheered in a theme (even if the theme has
+      // no version of this message, the words stay and the look changes), or when the
+      // theme rewrote the message.
+      themeTitle: (fromSender || bank?.length) ? theme.title : undefined,
+      themeName: (fromSender || bank?.length) ? themeName : undefined
     };
   }
 
@@ -636,24 +660,7 @@
         .slice(0,12);
     
     if(active==='notifications')
-      return (data.notifications||[]).length
-        ? data.notifications.map(n => {
-            const cheerText = cheerDisplay(n);
-
-            return `
-              <div class="cw-f-notification">
-                <strong>${esc(cheerText.title)}</strong>
-                <p>${esc(cheerText.message)}</p>
-                <small>${new Date(n.created_at).toLocaleString(
-                  undefined,
-                  window.Tidy?.timeFormat?.() === '24'
-                    ? {hourCycle:'h23'}
-                    : undefined
-                )}</small>
-              </div>
-            `;
-          }).join('')
-        : '<p class="cw-f-empty">No cheers yet. Your hype squad will show up here!</p>';
+      return cheerHistory();
 
     return list.length
       ? list.map(personRow).join('')
@@ -664,6 +671,147 @@
               ? 'No pending requests.'
               : 'Your friends will appear here.'
         }</div>`;
+  }
+
+  /* ==========================================
+     CHEER HISTORY
+     Grouped by day, with avatars, speech bubbles, a weekly summary,
+     unread dots and Cheer back.
+  ========================================== */
+  // Cheers that were unread when the history opened. Opening the history marks them
+  // read on the server right away, so this keeps their dots visible while you look.
+  let unreadSnapshot = new Set();
+  const cheerKey = n => `${n.sender_id || n.sender}|${n.created_at}`;
+  function snapshotUnread() {
+    unreadSnapshot = new Set((data.notifications || []).filter(n => !n.seen).map(cheerKey));
+  }
+
+  const firstName = name => String(name || 'A friend').trim().split(/\s+/)[0];
+  const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  function cheerDayLabel(date) {
+    const days = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    const sameYear = date.getFullYear() === new Date().getFullYear();
+    return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+  }
+
+  function cheerTimeLabel(date) {
+    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+    const today = startOfDay(date).getTime() === startOfDay(new Date()).getTime();
+    if (today && minutes < 1) return 'Just now';
+    if (today && minutes < 60) return `${minutes}m ago`;
+    if (today && minutes < 6 * 60) return `${Math.floor(minutes / 60)}h ago`;
+    return date.toLocaleTimeString(undefined, {
+      hour: 'numeric', minute: '2-digit',
+      ...(window.Tidy?.timeFormat?.() === '24' ? { hourCycle: 'h23' } : {})
+    });
+  }
+
+  function cheerSummary(list) {
+    const weekAgo = Date.now() - 7 * 86400000;
+    const week = list.filter(n => new Date(n.created_at).getTime() >= weekAgo);
+    if (!week.length) return '';
+    const bySender = new Map();
+    for (const n of week) {
+      const key = n.sender_id || n.sender;
+      const entry = bySender.get(key) || { n, count: 0 };
+      entry.count++;
+      bySender.set(key, entry);
+    }
+    const ranked = [...bySender.values()].sort((a, b) => b.count - a.count);
+    // Only name a "biggest fan" when one friend clearly leads.
+    const fan = ranked[0].count >= 2 && (ranked.length === 1 || ranked[0].count > ranked[1].count)
+      ? ` ${esc(firstName(ranked[0].n.sender))}’s your biggest fan.` : '';
+    const faces = ranked.slice(0, 3).map(({ n }) => avatar(cheerPerson(n))).join('');
+    const friendsText = bySender.size === 1 ? 'from 1 friend' : `from ${bySender.size} friends`;
+    return `<div class="cw-f-cheer-summary">
+      <div class="cw-f-cheer-faces" aria-hidden="true">${faces}</div>
+      <p><strong>${week.length} ${week.length === 1 ? 'cheer' : 'cheers'} this week</strong> ${friendsText}.${fan}</p>
+    </div>`;
+  }
+
+  // The friend behind a cheer, for their photo and Cheer back. Falls back to a
+  // name-only person when they are no longer a friend (or sender_id isn't sent yet).
+  function cheerPerson(n) {
+    const friend = n.sender_id ? friends().find(p => String(p.id) === String(n.sender_id)) : null;
+    return friend || { id: n.sender_id || n.sender || '?', name: n.sender || 'A friend', photoUrl: null };
+  }
+
+  // How each theme looks in the cheer history: an icon, and the wording after
+  // "[Name] sent …" where the theme's own heading doesn't read naturally there.
+  // Bubble colors live in css/friends.css ([data-cheer-theme]).
+  const CHEER_THEME_STYLE = {
+    northpole: { icon: '🎁', sent: 'a special delivery' },
+    cottage:   { icon: '🌻' },
+    pirate:    { icon: '⚓' },
+    space:     { icon: '🚀', sent: 'an incoming transmission' },
+    kingdom:   { icon: '👑' },
+    west:      { icon: '🤠' },
+    dinos:     { icon: '🦕' },
+    faeries:   { icon: '✨' },
+    sports:    { icon: '🏆' },
+    cars:      { icon: '🏁' },
+    dragon:    { icon: '🐉' }
+  };
+
+  function cheerHistory() {
+    const list = data.notifications || [];
+    if (!list.length) {
+      return `<div class="cw-f-cheer-empty">
+        <span class="cw-f-cheer-empty-icon" aria-hidden="true">👏</span>
+        <strong>No cheers yet</strong>
+        <p>When friends cheer you on, it’ll show up here. Why not start the chain?</p>
+        <button type="button" class="btn btn-primary" data-f-tab="friends">Cheer a friend</button>
+      </div>`;
+    }
+
+    // Cheer back is offered once per friend, on their most recent cheer.
+    const latestFrom = new Set();
+    let html = cheerSummary(list);
+    let currentDay = '';
+    for (const n of list) {
+      const date = new Date(n.created_at);
+      const day = cheerDayLabel(date);
+      if (day !== currentDay) {
+        if (currentDay) html += '</ol>';
+        html += `<h3 class="cw-f-cheer-day">${esc(day)}</h3><ol class="cw-f-cheer-list">`;
+        currentDay = day;
+      }
+      const person = cheerPerson(n);
+      const text = cheerDisplay(n);
+      const name = firstName(n.sender);
+      const themed = Boolean(text.themeTitle);
+      const style = themed ? CHEER_THEME_STYLE[text.themeName] || {} : {};
+      const sentWhat = style.sent || (text.themeTitle ? text.themeTitle.charAt(0).toLowerCase() + text.themeTitle.slice(1) : '');
+      const headline = themed
+        ? `${style.icon ? `<span class="cw-f-cheer-theme-icon" aria-hidden="true">${style.icon}</span>` : ''}${esc(name)} sent ${esc(sentWhat)}`
+        : `${esc(name)} cheered you on`;
+      const unread = unreadSnapshot.has(cheerKey(n));
+
+      let back = '';
+      const isFriend = person.state === 'friend';
+      if (isFriend && !latestFrom.has(person.id)) {
+        latestFrom.add(person.id);
+        back = person.cheered
+          ? `<span class="cw-f-cheer-back is-done"><span aria-hidden="true">✓</span> Cheered back today</span>`
+          : `<button type="button" class="cw-f-cheer-back" data-friend-cheer="${esc(person.id)}" aria-label="Cheer back ${esc(person.name)}"><span aria-hidden="true">👏</span> Cheer back</button>`;
+      }
+
+      html += `<li class="cw-f-cheer-row${themed ? ' is-themed' : ''}${unread ? ' is-unread' : ''}"${themed ? ` data-cheer-theme="${esc(text.themeName)}"` : ''}>
+        <span class="cw-f-cheer-avatar">${avatar(person)}${unread ? '<span class="cw-f-cheer-dot" aria-hidden="true"></span>' : ''}</span>
+        <div class="cw-f-cheer-body">
+          <div class="cw-f-cheer-line">
+            <strong>${headline}${unread ? '<span class="sr-only"> (new)</span>' : ''}</strong>
+            <time datetime="${esc(n.created_at)}" title="${esc(date.toLocaleString())}">${esc(cheerTimeLabel(date))}</time>
+          </div>
+          ${text.message ? `<p class="cw-f-cheer-bubble">${esc(text.message)}</p>` : ''}
+          ${back}
+        </div>
+      </li>`;
+    }
+    return html + '</ol>';
   }
 
   function friendDetail(p) {
@@ -687,14 +835,16 @@
     dialog.innerHTML=`
       <div class="cw-f-panel-head">
         <div>
-          <span class="cw-f-eyebrow">YOUR CIRCLE</span>
-          <h2 id="cw-f-title">Friends</h2>
+          ${active==='notifications' && !detail
+            ? '<button type="button" class="cw-f-back cw-f-back-top" data-f-tab="friends"><span aria-hidden="true">‹</span> Friends</button>'
+            : '<span class="cw-f-eyebrow">YOUR CIRCLE</span>'}
+          <h2 id="cw-f-title">${active==='notifications' && !detail ? 'Cheers' : 'Friends'}</h2>
         </div>
         <button class="icon-btn" data-friends-close aria-label="Close friends">×</button>
       </div>
 
        ${detail ? friendDetail(detail) : `
-       <p class="cw-f-subtitle">Make room for your people.</p>
+       ${active==='notifications' ? '' : `<p class="cw-f-subtitle">Make room for your people.</p>
 
       <div class="cw-f-tabs" aria-label="Friends views">
         ${
@@ -708,7 +858,7 @@
             </button>
           `).join('')
         }
-      </div>
+      </div>`}
 
       ${
         active==='add'
@@ -727,12 +877,6 @@
           ? `<button class="btn btn-outline cw-f-inbox" data-f-tab="notifications">
                Cheer inbox ${data.unread?`(${data.unread} new)`:''}
              </button>`
-          : ''
-      }
-
-      ${
-        active==='notifications'
-          ? '<button class="btn btn-outline cw-f-inbox" data-f-tab="friends">← Back to friends</button>'
           : ''
       }
 
@@ -807,19 +951,14 @@
     busy=true;
 
     try {
-      const {error:e}=await db.rpc(
-        'coursewise_friend_action',
-        {
-          p_action: type,
-          p_target: target || null,
-          ...(type === 'cheer' ? {
-            p_theme: (() => {
-              const choice = window.CoursewiseWhimsy?.config?.();
-              return choice?.enabled ? choice.theme : null;
-            })()
-          } : {})
-        }
-      );
+      // A cheer carries the sender's theme (saved as sender_theme), so the friend sees
+      // it in that theme. With no theme on, the original two-input version is used.
+      const args={p_action:type,p_target:target||null};
+      if(type==='cheer') {
+        const whimsy=window.CoursewiseWhimsy?.config?.();
+        if(whimsy?.enabled && THEMED_CHEERS[whimsy.theme]) args.p_theme=whimsy.theme;
+      }
+      const {error:e}=await db.rpc('coursewise_friend_action',args);
 
       if(e)throw e;
 
@@ -882,6 +1021,7 @@
 
     dialog.querySelector('#cw-f-search, [data-friends-close]')?.focus();
 
+    if(active==='notifications') snapshotUnread();
     if(active==='notifications'&&data.unread)
       void action('read');
   }
@@ -1025,6 +1165,7 @@
         error='';
         clearTimeout(feedbackTimer);
 
+        if(active==='notifications') snapshotUnread();
         renderPanel();
 
         if(active==='notifications'&&data.unread)

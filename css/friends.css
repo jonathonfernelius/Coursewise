@@ -164,3 +164,49 @@
   .cw-f-invite .btn+.btn{margin-left:0}
 }
 @media(prefers-reduced-motion:reduce){.cw-f-ring,.cw-f-tile-name,.cw-f-quick-cheer{transition:none}.cw-f-tile:hover .cw-f-ring,.cw-f-tile:focus-visible .cw-f-ring,.cw-f-tile-wrap:hover .cw-f-quick-cheer{transform:none}}
+
+/* ---------- Cheer history ---------- */
+.cw-f-back-top{display:inline-flex;align-items:center;gap:.3rem;margin:0 0 .35rem;padding:.15rem 0;color:var(--primary);font-size:.8rem;font-weight:500}
+.cw-f-back-top span{font-size:1.1rem;line-height:1}
+.cw-f-cheer-summary{display:flex;align-items:center;gap:.85rem;margin:.6rem 0 .4rem;padding:.8rem 1rem;border-radius:1rem;background:var(--muted)}
+.cw-f-cheer-summary p{margin:0;font-size:.82rem;line-height:1.45;color:var(--muted-fg)}
+.cw-f-cheer-summary strong{color:var(--fg);font-weight:500}
+.cw-f-cheer-faces{display:flex;flex:none}
+.cw-f-cheer-faces .cw-f-avatar{width:1.85rem;height:1.85rem;font-size:.62rem;margin-left:-.55rem;box-shadow:0 0 0 2px var(--muted)}
+.cw-f-cheer-faces .cw-f-avatar:first-child{margin-left:0}
+.cw-f-cheer-day{margin:1.15rem 0 .2rem;font-size:.75rem;font-weight:500;color:var(--muted-fg);letter-spacing:.01em}
+.cw-f-cheer-list{list-style:none;margin:0;padding:0}
+.cw-f-cheer-row{display:flex;gap:.8rem;padding:.65rem 0}
+.cw-f-cheer-avatar{position:relative;flex:none}
+.cw-f-cheer-avatar .cw-f-avatar{width:2.4rem;height:2.4rem;font-size:.78rem;box-shadow:none}
+.cw-f-cheer-dot{position:absolute;top:0;right:-1px;width:.6rem;height:.6rem;border-radius:50%;background:var(--primary);box-shadow:0 0 0 2px var(--card)}
+.cw-f-cheer-body{flex:1;min-width:0}
+.cw-f-cheer-line{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
+.cw-f-cheer-line strong{font-size:.86rem;font-weight:500;color:var(--fg)}
+.cw-f-cheer-line time{flex:none;font-size:.72rem;color:var(--muted-fg)}
+.cw-f-cheer-bubble{margin:.35rem 0 0;padding:.55rem .8rem;border-radius:.3rem 1rem 1rem 1rem;background:var(--muted);font-size:.86rem;line-height:1.45;color:var(--fg);overflow-wrap:anywhere}
+.cw-f-cheer-row.is-themed{--cheer-color:var(--sun)}
+.cw-f-cheer-row.is-themed .cw-f-cheer-bubble{background:color-mix(in oklch,var(--cheer-color) 14%,var(--card));color:color-mix(in oklch,var(--cheer-color) 50%,var(--fg))}
+.cw-f-cheer-theme-icon{margin-right:.35rem;font-size:.95em}
+/* One bubble color per theme */
+[data-cheer-theme="northpole"]{--cheer-color:var(--sky)}
+[data-cheer-theme="cottage"]{--cheer-color:var(--mint)}
+[data-cheer-theme="pirate"]{--cheer-color:var(--teal)}
+[data-cheer-theme="space"]{--cheer-color:var(--indigo)}
+[data-cheer-theme="kingdom"]{--cheer-color:var(--grape)}
+[data-cheer-theme="west"]{--cheer-color:var(--sun)}
+[data-cheer-theme="dinos"]{--cheer-color:var(--lime)}
+[data-cheer-theme="faeries"]{--cheer-color:var(--rose)}
+[data-cheer-theme="sports"]{--cheer-color:oklch(.55 .14 250)}
+[data-cheer-theme="cars"]{--cheer-color:oklch(.54 .17 22)}
+[data-cheer-theme="dragon"]{--cheer-color:var(--coral)}
+.cw-f-cheer-row.is-unread .cw-f-cheer-line strong{font-weight:600}
+.cw-f-cheer-back{display:inline-flex;align-items:center;gap:.3rem;margin-top:.45rem;padding:.3rem .7rem;border:1px solid color-mix(in oklch,var(--primary) 30%,var(--border));border-radius:999px;background:transparent;color:var(--primary);font:inherit;font-size:.75rem;font-weight:500;cursor:pointer;transition:background .15s}
+.cw-f-cheer-back:hover{background:color-mix(in oklch,var(--primary) 8%,transparent)}
+.cw-f-cheer-back:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.cw-f-cheer-back.is-done{border-color:transparent;padding-left:0;color:var(--muted-fg);cursor:default}
+.cw-f-cheer-empty{display:grid;justify-items:center;gap:.4rem;padding:2.5rem 1rem;text-align:center}
+.cw-f-cheer-empty-icon{display:grid;place-items:center;width:3.6rem;height:3.6rem;margin-bottom:.4rem;border-radius:1.1rem;background:var(--secondary);font-size:1.6rem;transform:rotate(-6deg)}
+.cw-f-cheer-empty strong{font-size:.95rem;font-weight:500}
+.cw-f-cheer-empty p{margin:0 0 .6rem;font-size:.82rem;color:var(--muted-fg);max-width:18rem}
+@media(prefers-reduced-motion:reduce){.cw-f-cheer-back{transition:none}}
