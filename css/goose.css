@@ -1,0 +1,515 @@
+
+/* ==========================================
+   COURSEWISE GOOSE v2.0
+   Idle, walking, sleeping, honking.
+   ========================================== */
+
+:root {
+  --cw-goose-size: 105px;
+  --cw-goose-bottom: 18px;
+  --cw-goose-left: 22px;
+}
+
+#cw-goose {
+  position: fixed;
+  left: var(--cw-goose-left);
+  bottom: var(--cw-goose-bottom);
+  width: var(--cw-goose-size);
+  height: auto;
+
+  z-index: 120;
+  cursor: pointer;
+  pointer-events: auto;
+
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  filter: drop-shadow(
+    0 6px 10px rgba(30,36,42,.12)
+  );
+
+  outline-offset: 5px;
+}
+
+#cw-goose:focus-visible {
+  outline: 3px solid #e9a03a;
+  border-radius: 12px;
+}
+
+#cw-goose svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ==========================================
+   GOOSE STATES
+   ========================================== */
+
+/* His regular standing appearance. */
+#cw-goose .cw-goose-standing {
+  display: block;
+}
+
+/* Sleeping illustration hidden by default. */
+#cw-goose .cw-goose-sleeping {
+  display: none;
+}
+
+/* Flip toward the direction of travel. */
+#cw-goose[data-facing="left"] .cw-goose-standing {
+  transform: scaleX(-1);
+}
+
+/* Gentle breathing and bobbing. */
+#cw-goose[data-state="idle"] .cw-goose-body-wrap {
+  transform-origin: 52% 68%;
+  animation: cwGooseIdle 4.4s ease-in-out infinite;
+}
+
+/* Occasional blinking. */
+#cw-goose .cw-goose-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cwGooseBlink 6.8s infinite;
+}
+
+/* ==========================================
+   WALKING
+   ========================================== */
+
+/* Bob slightly as he waddles. */
+#cw-goose[data-state="walking"] .cw-goose-body-wrap {
+  animation: cwGooseWaddle .48s ease-in-out infinite;
+}
+
+/* Alternate the feet. */
+#cw-goose[data-state="walking"] .cw-goose-leg-front {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: cwGooseStep .48s ease-in-out infinite;
+}
+
+#cw-goose[data-state="walking"] .cw-goose-leg-back {
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: cwGooseStep .48s ease-in-out infinite;
+  animation-delay: -.24s;
+}
+
+/* ==========================================
+   SLEEPING
+   ========================================== */
+
+#cw-goose[data-state="sleeping"] .cw-goose-standing {
+  display: none;
+}
+
+#cw-goose[data-state="sleeping"] .cw-goose-sleeping {
+  display: block;
+  animation: cwGooseSleepBreathing 4s ease-in-out infinite;
+}
+
+/* Tiny floating Zs above his head. */
+#cw-goose .cw-goose-zzz {
+  position: absolute;
+  left: 52%;
+  bottom: 68%;
+
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 5px;
+  color: #89929a;
+
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#cw-goose[data-state="sleeping"] .cw-goose-zzz {
+  animation: cwGooseZzz 4.5s ease-in-out infinite;
+}
+
+/* ==========================================
+   HONKING
+   ========================================== */
+
+#cw-goose.cw-goose-honking {
+  animation: cwGooseHonkBounce .38s ease-in-out;
+}
+
+#cw-goose .cw-goose-honk {
+  position: absolute;
+  bottom: 88%;
+  left: 55%;
+
+  transform: translateX(-50%) scale(.7);
+
+  padding: 7px 12px;
+  border-radius: 14px;
+
+  background: #fffdf5;
+  color: #39312a;
+  border: 2px solid #d8a453;
+
+  box-shadow: 0 5px 14px rgba(0,0,0,.12);
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  white-space: nowrap;
+
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+}
+
+#cw-goose .cw-goose-honk::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 40%;
+
+  width: 10px;
+  height: 10px;
+
+  background: #fffdf5;
+  border-right: 2px solid #d8a453;
+  border-bottom: 2px solid #d8a453;
+
+  transform: rotate(45deg);
+}
+
+#cw-goose .cw-goose-honk-show {
+  animation: cwGooseHonkBubble 1.4s ease-out forwards;
+}
+
+/* Future outfit layer. */
+#cw-goose .cw-goose-accessories,
+#cw-goose .cw-goose-sleep-accessories {
+  pointer-events: none;
+}
+
+/* ==========================================
+   KEYFRAMES
+   ========================================== */
+
+@keyframes cwGooseIdle {
+  0%,100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes cwGooseBlink {
+  0%,46%,48%,100% {
+    transform: scaleY(1);
+  }
+  47% {
+    transform: scaleY(.1);
+  }
+}
+
+@keyframes cwGooseWaddle {
+  0%,100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) rotate(-1deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(1deg);
+  }
+}
+
+@keyframes cwGooseStep {
+  0%,100% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(13deg);
+  }
+}
+
+@keyframes cwGooseSleepBreathing {
+  0%,100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes cwGooseZzz {
+  0%,100% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  30%,65% {
+    opacity: .65;
+  }
+  85% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes cwGooseHonkBounce {
+  0%,100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-7px);
+  }
+  65% {
+    transform: translateY(1px);
+  }
+}
+
+@keyframes cwGooseHonkBubble {
+  0% {
+    opacity: 0;
+    transform:
+      translateX(-50%)
+      translateY(8px)
+      scale(.75);
+  }
+
+  18%,75% {
+    opacity: 1;
+    transform:
+      translateX(-50%)
+      translateY(0)
+      scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translateX(-50%)
+      translateY(-8px)
+      scale(.9);
+  }
+}
+
+/* ==========================================
+   RESPONSIVE BEHAVIOR
+   ========================================== */
+
+@media (max-width:900px) {
+  :root {
+    --cw-goose-size: 82px;
+    --cw-goose-bottom: 14px;
+    --cw-goose-left: 16px;
+  }
+}
+
+@media (max-width:650px) {
+  :root {
+    --cw-goose-size: 64px;
+    --cw-goose-bottom: 12px;
+    --cw-goose-left: 10px;
+  }
+
+  #cw-goose .cw-goose-honk {
+    font-size: 11px;
+    padding: 5px 9px;
+  }
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion:reduce) {
+  #cw-goose,
+  #cw-goose *,
+  #cw-goose *::before,
+  #cw-goose *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  #cw-goose[data-state="sleeping"] .cw-goose-zzz {
+    display: none;
+  }
+
+  #cw-goose .cw-goose-honk-show {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+
+/* ==========================================
+   COURSEWISE GOOSE v3.0
+   WHIMSY-ONLY MISCHIEF
+   ========================================== */
+
+/* Hide stolen objects during normal activities. */
+#cw-goose .cw-goose-stolen-object {
+  display: none;
+}
+
+/* ==========================================
+   PENCIL THEFT
+   ========================================== */
+
+#cw-goose[data-state="stealing"] .cw-goose-stolen-object {
+  display: block;
+}
+
+/* Keep his usual adorable walking motion. */
+#cw-goose[data-state="stealing"] .cw-goose-body-wrap {
+  animation: cwGooseWaddle .48s ease-in-out infinite;
+}
+
+#cw-goose[data-state="stealing"] .cw-goose-leg-front {
+  animation: cwGooseStep .48s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+#cw-goose[data-state="stealing"] .cw-goose-leg-back {
+  animation: cwGooseStep .48s ease-in-out -.24s infinite;
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+/* ==========================================
+   CHAOS SPRINT
+   ========================================== */
+
+#cw-goose[data-state="chaos"] .cw-goose-body-wrap {
+  animation: cwGooseRun .22s ease-in-out infinite;
+}
+
+#cw-goose[data-state="chaos"] .cw-goose-leg-front {
+  animation: cwGooseSprintStep .22s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+#cw-goose[data-state="chaos"] .cw-goose-leg-back {
+  animation: cwGooseSprintStep .22s ease-in-out -.11s infinite;
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+#cw-goose[data-state="chaos"] .cw-goose-wing {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cwGooseFlap .22s ease-in-out infinite;
+}
+
+@keyframes cwGooseRun {
+  0%,100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+}
+
+@keyframes cwGooseSprintStep {
+  0%,100% {
+    transform: rotate(-25deg);
+  }
+  50% {
+    transform: rotate(25deg);
+  }
+}
+
+@keyframes cwGooseFlap {
+  0%,100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(25deg) translateY(-4px);
+  }
+}
+
+/* ==========================================
+   RARE GOOSE INCIDENT REPORTS
+   ========================================== */
+
+#cw-goose .cw-goose-incident {
+  position: absolute;
+  left: 0;
+  bottom: 108%;
+
+  width: max-content;
+  max-width: min(235px, 68vw);
+  padding: 10px 12px;
+
+  background: #fffdf5;
+  color: #39312a;
+
+  border: 2px solid #d8a453;
+  border-radius: 12px;
+
+  box-shadow: 0 6px 20px rgba(0,0,0,.13);
+
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 650;
+
+  pointer-events: none;
+  z-index: 5;
+
+  animation: cwGooseIncidentAppear 3.8s ease-in-out both;
+}
+
+#cw-goose .cw-goose-incident::after {
+  content: "";
+  position: absolute;
+
+  left: 25px;
+  bottom: -7px;
+
+  width: 10px;
+  height: 10px;
+
+  background: #fffdf5;
+  border-right: 2px solid #d8a453;
+  border-bottom: 2px solid #d8a453;
+
+  transform: rotate(45deg);
+}
+
+@keyframes cwGooseIncidentAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(9px) scale(.94);
+  }
+
+  12%,84% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-7px) scale(.98);
+  }
+}
+
+/* ==========================================
+   ACCESSIBILITY
+   ========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  #cw-goose[data-state="stealing"] *,
+  #cw-goose[data-state="chaos"] *,
+  #cw-goose .cw-goose-incident {
+    animation: none !important;
+  }
+
+  #cw-goose .cw-goose-incident {
+    opacity: 1;
+  }
+}
+
