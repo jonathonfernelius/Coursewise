@@ -128,8 +128,21 @@
     };
     $("delete-account").onclick=deleteAccountDialog;
     $("logout").onclick = e => U.run(async () => { await T.logout(); location.href = "index.html"; }, e.currentTarget);
+    const usernameInput = $("a-user");
+    const usernameSpaceError = "Spaces are not allowed in the username.";
+    const validateUsername = () => {
+      const hasWhitespace = /\s/.test(usernameInput.value);
+      usernameInput.setCustomValidity(hasWhitespace ? usernameSpaceError : "");
+      return !hasWhitespace;
+    };
+    usernameInput.addEventListener("input", validateUsername);
+    usernameInput.addEventListener("invalid", () => {
+      if (!validateUsername()) U.toast(usernameSpaceError);
+    });
+    validateUsername();
     $("account").onsubmit = e => { e.preventDefault(); U.run(async () => {
       e.preventDefault();
+      if (!validateUsername()) { U.toast(usernameSpaceError); return; }
       await T.updateUser({ first: $("a-first").value.trim(), last: $("a-last").value.trim(), email: $("a-email").value.trim(), username: $("a-user").value.trim() });
       window.CoursewisePhotos.syncHeader();
       U.toast("Account saved"); render();
@@ -148,8 +161,22 @@
     };
     $("add-cat").onclick = () => U.categoryDialog({ done: render });
     root.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => U.categoryDialog({ cat: S.categories.find(c => c.id === b.dataset.cat), done: render }));
+    const passwordInputs = [$("pw1"), $("pw2")];
+    const passwordSpaceError = "Spaces are not allowed in the password.";
+    const validatePassword = input => {
+      const hasWhitespace = /\s/.test(input.value);
+      input.setCustomValidity(hasWhitespace ? passwordSpaceError : "");
+      return !hasWhitespace;
+    };
+    passwordInputs.forEach(input => {
+      input.addEventListener("input", () => validatePassword(input));
+      input.addEventListener("invalid", () => {
+        if (!validatePassword(input)) U.toast(passwordSpaceError);
+      });
+    });
     $("password").onsubmit = e => { e.preventDefault(); U.run(async () => {
       e.preventDefault();
+      if (passwordInputs.some(input => !validatePassword(input))) { U.toast(passwordSpaceError); return; }
       if ($("pw1").value !== $("pw2").value) { U.toast("Passwords don't match"); return; }
       await T.changePassword($("pw1").value); e.target.reset(); U.toast("Password updated");
     }, e.submitter); };
