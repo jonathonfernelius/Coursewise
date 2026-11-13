@@ -1099,46 +1099,235 @@ let config = {enabled:false,theme:"cottage"};
 let scheduled = false;
 let sceneSignature = "";
 
+/* Cloud preference synchronization. */
+let cloudGeneration = 0;
+let cloudOwner = null;
+let cloudReady = false;
+let pendingCloudSave = false;
+let cloudSaveQueue = Promise.resolve();
+
 function accountKey() {
   const state = window.Tidy?.state;
   return state?.signedIn && state.user?.email
     ? STORAGE + state.user.email.toLowerCase() : "";
 }
 
+
+/* ==========================================
+   CLOUD-SAVED WHIMSY PREFERENCES
+   ========================================== */
+
 function syncAccount() {
   const next = accountKey();
   if (next === account) return;
 
   account = next;
+  cloudOwner = null;
+  cloudReady = false;
+  pendingCloudSave = false;
+
+  const generation = ++cloudGeneration;
+
   let old = {};
+  let hadLocalChoice = false;
+
   try {
-    old = next ? JSON.parse(localStorage.getItem(next) || "{}") : {};
+    const stored = next
+      ? localStorage.getItem(next)
+      : null;
+
+    hadLocalChoice = stored !== null;
+    old = stored ? JSON.parse(stored) : {};
   } catch {}
 
   config = {
-    enabled:old?.enabled === true,
-    theme:THEMES[old?.theme] ? old.theme : "cottage"
+    enabled: old?.enabled === true,
+    theme: THEMES[old?.theme]
+      ? old.theme
+      : "cottage"
   };
+
   sceneSignature = "";
+
+  // Load the account preference from Supabase.
+  if (next) {
+    void loadCloudWhimsy(generation, next, hadLocalChoice);
+  }
 }
 
 function selected() {
-  return config.enabled ? THEMES[config.theme] : null;
+  return config.enabled
+    ? THEMES[config.theme]
+    : null;
 }
 
+/* Save changes to Supabase in order, preventing
+   rapid theme switches from saving out of order. */
+function queueCloudWhimsySave() {
+  if (!cloudReady || !cloudOwner || !account) {
+    pendingCloudSave = true;
+    return;
+  }
+
+  pendingCloudSave = false;
+
+  const owner = cloudOwner;
+  const accountAtSave = account;
+  const choice = {
+    WhimsyEnabled: config.enabled,
+    WhimsyTheme: config.theme
+  };
+
+  cloudSaveQueue = cloudSaveQueue
+    .catch(() => {})
+    .then(async () => {
+      // Ignore saves belonging to an old account.
+      if (account !== accountAtSave) return;
+
+      const db = window.tidyClient;
+      if (!db) throw new Error("Supabase unavailable");
+
+      const {data,error} = await db
+        .from("Settings")
+        .update(choice)
+        .eq("UserID",owner)
+        .select("UserID")
+        .single();
+
+      if (error) throw error;
+
+      if (!data) {
+        throw new Error("Whimsy preference was not saved.");
+      }
+    })
+    .catch(error => {
+      console.error(
+        "Could not save Whimsy Mode to Supabase:",
+        error
+      );
+    });
+}
+
+/* Retrieve the currently signed-in user's
+   Whimsy settings from their account. */
+async function loadCloudWhimsy(
+  generation,
+  accountAtLoad,
+  hadLocalChoice
+) {
+  try {
+    const db = window.tidyClient;
+    if (!db) return;
+
+    const {data:authData,error:authError} =
+      await db.auth.getUser();
+
+    if (authError || !authData?.user) {
+      throw authError || new Error("Not signed in");
+    }
+
+    const {data:user,error:userError} = await db
+      .from("User")
+      .select("UserID")
+      .eq("AuthUserID",authData.user.id)
+      .single();
+
+    if (userError) throw userError;
+
+    const {data:settings,error:settingsError} = await db
+      .from("Settings")
+      .select("WhimsyEnabled,WhimsyTheme")
+      .eq("UserID",user.UserID)
+      .single();
+
+    if (settingsError) throw settingsError;
+
+    // An older request must never change a new account.
+    if (
+      generation !== cloudGeneration ||
+      account !== accountAtLoad
+    ) return;
+
+    cloudOwner = user.UserID;
+    cloudReady = true;
+
+    // If the user changed their theme while loading,
+    // save their latest choice instead of overwriting it.
+    if (pendingCloudSave) {
+      queueCloudWhimsySave();
+      return;
+    }
+
+    const hasCloudChoice =
+      typeof settings.WhimsyEnabled === "boolean" &&
+      THEMES[settings.WhimsyTheme];
+
+    if (hasCloudChoice) {
+      config = {
+        enabled: settings.WhimsyEnabled,
+        theme: settings.WhimsyTheme
+      };
+
+      // Keep an updated local cache for fast loading.
+      try {
+        localStorage.setItem(
+          account,
+          JSON.stringify(config)
+        );
+      } catch {}
+
+      sceneSignature = "";
+      render();
+    } else if (hadLocalChoice) {
+      // First-time migration:
+      // Upload the existing browser preference.
+      queueCloudWhimsySave();
+    }
+
+  } catch (error) {
+    if (
+      generation === cloudGeneration &&
+      account === accountAtLoad
+    ) {
+      console.warn(
+        "Using local Whimsy preferences; cloud load failed:",
+        error
+      );
+    }
+  }
+}
+
+/* Save immediately to the browser, then to
+   Supabase when the connection is available. */
 function save(patch) {
   syncAccount();
-  config = {...config,...patch};
+
+  config = {
+    ...config,
+    ...patch
+  };
+
+  config.enabled = config.enabled === true;
+
+  if (!THEMES[config.theme]) {
+    config.theme = "cottage";
+  }
 
   if (account) {
     try {
-      localStorage.setItem(account,JSON.stringify(config));
+      localStorage.setItem(
+        account,
+        JSON.stringify(config)
+      );
     } catch {}
+
+    queueCloudWhimsySave();
   }
 
   sceneSignature = "";
   render();
 }
+
 
 /* Remember a daily prototype progress counter.
    These are successful completions in this browser,
