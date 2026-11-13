@@ -69,6 +69,13 @@
     } catch { return { updated: [], removed: [], newCount: 0, unnamedUpdated: 0, unnamedRemoved: 0 }; }
   }
   function savePending(v) { try { sessionStorage.setItem(NOTICE_KEY, JSON.stringify(v)); } catch { /* storage unavailable */ } }
+  // After an import there is nothing new to review; keep only moved/deleted news.
+  function clearCanvasNewItems() {
+    const pending = pendingChanges();
+    if (!pending.newCount) return;
+    savePending({ ...pending, newCount: 0 });
+    if (document.querySelector("#cw-auto-canvas-notice")) canvasNotice({ newCount: 0 });
+  }
   function canvasDue(iso, hasTime) {
     if (!iso) return "no date";
     if (!hasTime) return T.fmtDate(iso.slice(0, 10));
@@ -807,5 +814,5 @@
     void checkCanvasOnSessionStart(rerender);
   }
 
-  window.Tidy.ui = { run, icons, toast, updateCard, canvasNotice, canvasChangesFromSync, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
+  window.Tidy.ui = { run, icons, toast, updateCard, canvasNotice, canvasChangesFromSync, clearCanvasNewItems, modal, taskRow, taskDialog, eventDialog, categoryDialog, manageCategories, recurrenceDialog, listDialog, toggle, page, options };
 })();

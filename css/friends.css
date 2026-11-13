@@ -111,7 +111,7 @@
   .stack .cw-f-card .cw-f-home-list .cw-f-person{padding:.45rem 0}
   .stack .cw-f-card .cw-f-home-list .cw-f-avatar{width:2.5rem;height:2.5rem;font-size:.8rem}
   .stack .cw-f-card .cw-f-home-list .cw-f-cheer{min-height:2.2rem}
-  .stack .cw-f-card .cw-f-empty{padding:1.1rem 1rem}
+  .stack .cw-f-card .cw-f-empty{grid-column:1/-1;grid-row:2;align-self:center;justify-self:center;max-width:20rem;margin:0;padding:1.1rem 1rem}
   .stack .cw-f-card .cw-f-request{grid-column:1/-1;grid-row:3;margin:.45rem 0 0;padding:.55rem .9rem}
 }
 
@@ -211,3 +211,14 @@
 .cw-f-cheer-empty strong{font-size:.95rem;font-weight:500}
 .cw-f-cheer-empty p{margin:0 0 .6rem;font-size:.82rem;color:var(--muted-fg);max-width:18rem}
 @media(prefers-reduced-motion:reduce){.cw-f-cheer-back{transition:none}}
+
+/* Friends card: center the empty message everywhere, and drop the buttons under the title when the card gets narrow. */
+.cw-f-empty{margin-inline:auto;text-wrap:balance}
+@media(min-width:861px) and (max-width:1100px){
+  .stack .cw-f-card{grid-template-rows:auto auto minmax(0,1fr) auto}
+  .stack .cw-f-card .cw-f-card-actions{grid-area:auto;grid-column:1/-1;grid-row:2;flex-wrap:wrap;margin:.35rem 0 .2rem}
+  .stack .cw-f-card .cw-f-card-actions .btn{flex:1 1 auto}
+  .stack .cw-f-card .cw-f-empty,.stack .cw-f-card .cw-f-circle,.stack .cw-f-card .cw-f-home-list{grid-row:3}
+  .stack .cw-f-card .cw-f-request,.stack .cw-f-card .cw-f-invite{grid-row:4}
+}
+@media(max-width:860px){.cw-f-card-actions{flex-wrap:wrap}.cw-f-card-actions .btn{flex:1 1 8rem}}
