@@ -513,3 +513,8 @@
   }
 }
 
+/* Hide the goose completely when the account preference is off. */
+#cw-goose[hidden],
+html[data-goose="off"] #cw-goose {
+  display: none !important;
+}

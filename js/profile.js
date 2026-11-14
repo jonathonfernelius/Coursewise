@@ -95,7 +95,9 @@
             <div class="form"><div class="field"><label for="p-week">Week starts on</label><select id="p-week" data-dd>${U.options([["0", "Sunday"], ["1", "Monday"]], String(ws))}</select></div>
               <div class="switch-row"><div><label for="p-done">Show completed tasks</label><small>Show or hide completed tasks on Today, To-do, and Calendar.</small></div>
                 <span class="switch"><input id="p-done" type="checkbox"${S.prefs.showDone ? " checked" : ""}><span></span></span></div>
-              <div class="switch-row"><div><label for="p-24h">Military time (24-hour)</label><small>Show times like 15:30 instead of 3:30 PM.</small></div>
+              <div class="switch-row"><div><label for="p-goose">Show Goose</label><small>Let the goose wander around Coursewise. Outfits and mischief appear in Whimsy Mode.</small></div>
+                <span class="switch"><input id="p-goose" type="checkbox"${S.prefs.showGoose !== false ? " checked" : ""}><span></span></span></div>
+                <div class="switch-row"><div><label for="p-24h">Military time (24-hour)</label><small>Show times like 15:30 instead of 3:30 PM.</small></div>
                 <span class="switch"><input id="p-24h" type="checkbox"${T.timeFormat() === "24" ? " checked" : ""}><span></span></span></div>
               <div class="switch-row"><div><label for="replay-intro">Getting started guide</label><small>Show the setup steps on Today again.</small></div>
                 <button type="button" class="btn btn-outline" id="replay-intro">Show on Today</button></div></div></section>
@@ -151,6 +153,14 @@
     $("p-week").onchange = e => U.run(async () => { try { await T.setPrefs({ weekStart: Number(e.target.value) }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     $("replay-intro").onclick = e => U.run(async () => { await T.setIntroDone(false); location.href = "home.html"; }, e.currentTarget);
     $("p-done").onchange = e => U.run(async () => { try { await T.setPrefs({ showDone: e.target.checked }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
+    $("p-goose").onchange = e => U.run(async () => {
+      try {
+        await T.setPrefs({ showGoose: e.target.checked });
+        U.toast(e.target.checked ? "Goose released!" : "Goose is off duty.");
+      } finally {
+        render();
+      }
+    }, e.currentTarget);
     $("p-24h").onchange = e => U.run(async () => { try { await T.setPrefs({ timeFormat: e.target.checked ? "24" : "12" }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     if ($("profile-photo-zoom")) $("profile-photo-zoom").onclick = e => {
       const button = e.currentTarget;
