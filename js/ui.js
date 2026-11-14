@@ -342,7 +342,7 @@
   }
 
   function taskDialog({ task, listId, due, done }) {
-    const S = T.state, r = task?.reminder;
+    const S = T.state, r = task?.due ? task?.reminder : null;
     const initialCategory = task ? task.categoryId || "" : "";
     let repeatVal = task?.repeat || null;
     const showRepeatHint = rule => {
@@ -385,8 +385,11 @@
       </div>
       <div class="field"><label for="f-rep">Repeat</label><select id="f-rep" data-dd>${repOptions()}</select>
         <small class="hint${showRepeatHint(repeatVal) ? "" : " hide"}" id="rep-hint">Marking it done adds the next one automatically.</small></div>
-      <div class="switch-row"><label for="f-rem">Schedule Reminder</label><span class="switch"><input id="f-rem" type="checkbox"${r ? " checked" : ""}><span></span></span></div>
-      <p class="muted">Saved for later; notifications are not enabled yet.</p><div class="field${r ? "" : " hide"}" id="rem-wrap"><label for="f-remwhen">Remind me</label><select id="f-remwhen" data-dd>${options([["15m", "15 minutes before"], ["1h", "1 hour before"], ["1d", "1 day before"], ["1w", "1 week before"]], r || "1h")}</select></div>
+      <div id="f-rem-section"${task?.due || due ? "" : " class=\"hide\""}>
+        <div class="switch-row"><label for="f-rem">Schedule Reminder</label><span class="switch"><input id="f-rem" type="checkbox"${r ? " checked" : ""}><span></span></span></div>
+        <p class="muted">Get a browser notification before this task is due. Enable notifications in Profile on each device.</p>
+        <div class="field${r ? "" : " hide"}" id="rem-wrap"><label for="f-remwhen">Remind me</label><select id="f-remwhen" data-dd>${options([["15m", "15 minutes before"], ["1h", "1 hour before"], ["1d", "1 day before"], ["1w", "1 week before"]], r || "1h")}</select></div>
+      </div>
       <div class="dialog-actions"><button class="btn btn-primary">${task ? "Update" : "Save task"}</button><button type="button" class="btn btn-outline" data-close>Cancel</button></div>
       ${task ? `<button type="button" class="delete-link" id="f-del">${icons.trash} Delete task</button>` : ""}</form>`);
     const q = id => d.querySelector("#" + id);
@@ -502,9 +505,17 @@
       q("rep-hint").classList.toggle("hide", !showRepeatHint(repeatVal));
     };
     q("f-rem").onchange = e => q("rem-wrap").classList.toggle("hide", !e.target.checked);
+    q("f-due").onchange = e => {
+      const hasDueDate = !!e.target.value;
+      q("f-rem-section").classList.toggle("hide", !hasDueDate);
+      if (!hasDueDate) {
+        q("f-rem").checked = false;
+        q("rem-wrap").classList.add("hide");
+      }
+    };
     d.querySelector("form").onsubmit = e => { e.preventDefault(); run(async () => {
       e.preventDefault();
-      const p = { title: q("f-title").value.trim(), categoryId: q("f-cat").value || null, listId: q("f-list").value, due: q("f-due").value || null, time: q("f-time").value || null, reminder: q("f-rem").checked ? q("f-remwhen").value : null, repeat: repeatVal };
+      const p = { title: q("f-title").value.trim(), categoryId: q("f-cat").value || null, listId: q("f-list").value, due: q("f-due").value || null, time: q("f-time").value || null, reminder: q("f-due").value && q("f-rem").checked ? q("f-remwhen").value : null, repeat: repeatVal };
       if (p.repeat && !p.due) p.due = T.toKey(new Date());
       if (!p.title) return;
       if (p.listId === "__new") throw new Error("Create a list before saving this task.");

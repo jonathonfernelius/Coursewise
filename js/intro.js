@@ -1,7 +1,7 @@
-/* Getting-started guide: three setup steps on Today that check themselves off as you do them. */
+/* Getting-started guide: setup steps on Today that check themselves off as you do them. */
 (() => {
   const T = window.Tidy;
-  let ctx = { canvas: null, onAddTask: () => {} };
+  let ctx = { canvas: null, notifications: null, onAddTask: () => {} };
   let finishing = false;          // All steps resolved this session: keep the "all set" card until it's closed.
   let seen = null;
   let entered = false;            // Only the first appearance animates; re-renders draw it in place.                // Steps already shown as done, so only newly finished ones animate.
@@ -20,7 +20,11 @@
         action: cls => `<button type="button" class="btn ${cls}" data-intro-add>Add task</button>` },
       { id: "friend", title: "Add a friend", done: !!f && f.friends + f.pending > 0, skippable: true,
         text: "Friends see your streak and can cheer you on. Your tasks stay private.",
-        action: cls => `<button type="button" class="btn ${cls}" data-friends-open="add">Add friend</button>` }
+        action: cls => `<button type="button" class="btn ${cls}" data-friends-open="add">Add friend</button>` },
+      { id: "notifications", title: "Enable task notifications", done: ctx.notifications === true, skippable: true,
+        text: "Set up reminders for tasks with due dates on each device you use.",
+        extra: `<details class="cw-intro-notification-help"><summary>Platform setup</summary><p><strong>Windows/macOS:</strong> allow browser notifications in both browser and system settings. <strong>iPhone/iPad:</strong> in Safari, choose Share → Add to Home Screen, open the new icon, then enable notifications. <strong>Android:</strong> allow browser notifications in the prompt and Android settings.</p></details>`,
+        action: cls => `<a class="btn ${cls}" href="profile.html#notification-settings">Set up notifications</a>` }
     ].map(s => ({ ...s, skipped: !s.done && skips.includes(s.id) }));
   }
 
@@ -49,7 +53,7 @@
       const status = s.done ? '<span class="sr-only">Done: </span>' : s.skipped ? '<span class="sr-only">Skipped: </span>' : "";
       const body = s.done ? "" : s.skipped
         ? `<span class="cw-intro-text">Skipped. <button type="button" class="cw-intro-undo" data-intro-unskip="${s.id}">Undo</button></span>`
-        : `<span class="cw-intro-text">${s.text}</span>`;
+        : `<span class="cw-intro-text">${s.text}</span>${s.extra || ""}`;
       const actions = s.done || s.skipped ? "" : `<div class="cw-intro-actions">${s.action(s === next ? "btn-primary" : "btn-outline")}
           ${s.skippable ? `<button type="button" class="cw-intro-skip" data-intro-skip="${s.id}">Skip</button>` : '<span class="cw-intro-skip is-spacer" aria-hidden="true">Skip</span>'}</div>`;
       return `<li class="cw-intro-step ${state}${fresh.has(s.id) ? " just-done" : ""}">
@@ -59,7 +63,7 @@
 
     return `<section class="card cw-intro${enter}" aria-labelledby="cw-intro-title">
       <div class="cw-intro-head"><div><h2 id="cw-intro-title">Get Coursewise ready</h2>
-        <p>Three quick things and your semester is in one place.</p></div>
+        <p>A few quick things and your semester is in one place.</p></div>
         <span class="cw-intro-count" aria-label="${resolved} of ${list.length} steps finished">${resolved} of ${list.length}</span>
         <button type="button" class="icon-btn cw-intro-x" data-intro-close aria-label="Hide this guide">×</button></div>
       <div class="cw-intro-bar" aria-hidden="true"><i style="--p:${(resolved / list.length).toFixed(3)}"></i></div>
@@ -99,6 +103,10 @@
   }
 
   document.addEventListener("coursewise:friends", () => { if (visible()) refresh(); });
+  document.addEventListener("coursewise:notifications", e => {
+    ctx.notifications = e.detail?.enabled === true;
+    if (visible()) refresh();
+  });
 
   window.CoursewiseIntro = {
     visible,

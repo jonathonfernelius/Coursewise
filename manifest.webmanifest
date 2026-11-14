@@ -1,0 +1,18 @@
+{
+  "name": "Coursewise",
+  "short_name": "Coursewise",
+  "description": "Organize classes, tasks, and due dates.",
+  "start_url": "./home.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f8fc",
+  "theme_color": "#8057a7",
+  "icons": [
+    {
+      "src": "assets/coursewise-favicon.png",
+      "sizes": "64x64",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -745,3 +745,11 @@ h1,h2,h3{letter-spacing:-.035em;font-weight:750}
 .todo-start h2{font-size:1.35rem}
 .todo-start p{max-width:34rem;font-size:.9rem}
 .todo-start-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.6rem}
+
+/* Notification setup help in Profile → Preferences */
+.cw-notification-help{margin-top:1rem;border-top:1px solid var(--border);padding-top:.8rem;color:var(--fg)}
+.cw-notification-help summary{cursor:pointer;font-weight:500}
+.cw-notification-platforms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.25rem 1.25rem;padding-top:.65rem}
+.cw-notification-platforms h3{margin:.55rem 0 .2rem;font-size:.92rem}
+.cw-notification-platforms p{margin:0;color:var(--muted-fg);font-size:.85rem;line-height:1.55}
+@media(max-width:600px){.cw-notification-platforms{grid-template-columns:1fr}}

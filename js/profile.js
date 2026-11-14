@@ -99,6 +99,18 @@
                 <span class="switch"><input id="p-24h" type="checkbox"${T.timeFormat() === "24" ? " checked" : ""}><span></span></span></div>
               <div class="switch-row"><div><label for="replay-intro">Getting started guide</label><small>Show the setup steps on Today again.</small></div>
                 <button type="button" class="btn btn-outline" id="replay-intro">Show on Today</button></div></div></section>
+          <section class="card" id="notification-settings"><div class="section-head"><h2>Task notifications</h2></div>
+            <p class="muted">Enable browser notifications on this device to receive reminders for tasks with due dates. You can set a different reminder for each task.</p>
+            <p id="push-status" class="muted" role="status" aria-live="polite">Checking this device…</p>
+            <button type="button" class="btn btn-primary" id="push-toggle">Enable notifications</button>
+            <details class="cw-notification-help"><summary>Setup help for your device</summary>
+              <div class="cw-notification-platforms">
+                <section><h3>Windows</h3><p>Allow Coursewise in your browser’s site notification settings. If notifications still do not appear, open <strong>Settings → System → Notifications</strong> and allow notifications for your browser.</p></section>
+                <section><h3>macOS</h3><p>Allow Coursewise in your browser’s website notification settings. In macOS, open <strong>System Settings → Notifications</strong> and allow notifications for the browser you use.</p></section>
+                <section><h3>iPhone or iPad</h3><p>In Safari, use <strong>Share → Add to Home Screen</strong>, then open Coursewise from its Home Screen icon. Tap Enable notifications and allow the prompt. Manage it later in <strong>Settings → Notifications → Coursewise</strong>.</p></section>
+                <section><h3>Android</h3><p>Tap Enable notifications and allow the browser prompt. If needed, allow notifications for the browser in Android’s app notification settings and check the browser’s site settings for Coursewise.</p></section>
+              </div>
+            </details></section>
           <section class="card" id="categories"><div class="section-head"><h2>Categories</h2><span class="count">${S.categories.length}</span></div>
             <div class="cat-list">${S.categories.map(c => `<div class="cat-row t-${c.tone}"><span class="dot"></span><strong>${esc(c.name)}</strong>
               <small>${S.tasks.filter(t => t.categoryId === c.id).length} tasks</small>
@@ -150,6 +162,34 @@
     root.querySelectorAll("[name=theme]").forEach(r => r.onchange = () => U.run(async () => { try { await T.setPrefs({ theme: r.value }); U.toast("Theme updated"); } finally { render(); } }, r));
     $("p-week").onchange = e => U.run(async () => { try { await T.setPrefs({ weekStart: Number(e.target.value) }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     $("replay-intro").onclick = e => U.run(async () => { await T.setIntroDone(false); location.href = "home.html"; }, e.currentTarget);
+    const pushStatus = $("push-status"), pushToggle = $("push-toggle");
+    const updatePushStatus = async () => {
+      const push = window.CoursewiseNotifications;
+      if (!push) { pushStatus.textContent = "Notification setup is unavailable. Reload the page and try again."; pushToggle.disabled = true; return; }
+      const current = await push.status();
+      if (!pushToggle.isConnected) return;
+      pushToggle.disabled = !current.supported;
+      pushToggle.textContent = current.enabled ? "Turn off on this device" : "Enable notifications";
+      pushStatus.textContent = !current.supported
+        ? "This browser does not support web push notifications."
+        : current.enabled ? "Notifications are enabled on this device." : current.permission === "denied"
+          ? "Notifications are blocked. Allow them in browser and device settings, then try again."
+          : current.needsSync ? "This browser has a notification subscription that Coursewise could not verify. Enable again to reconnect this device."
+          : "Notifications are not enabled on this device.";
+      document.dispatchEvent(new CustomEvent("coursewise:notifications", { detail: current }));
+    };
+    void updatePushStatus();
+    pushToggle.onclick = e => U.run(async () => {
+      const current = await window.CoursewiseNotifications.status();
+      if (current.enabled) {
+        await window.CoursewiseNotifications.disable();
+        U.toast("Notifications turned off on this device");
+      } else {
+        await window.CoursewiseNotifications.enable();
+        U.toast("Notifications enabled on this device");
+      }
+      await updatePushStatus();
+    }, e.currentTarget);
     $("p-done").onchange = e => U.run(async () => { try { await T.setPrefs({ showDone: e.target.checked }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     $("p-24h").onchange = e => U.run(async () => { try { await T.setPrefs({ timeFormat: e.target.checked ? "24" : "12" }); U.toast("Preference saved"); } finally { render(); } }, e.currentTarget);
     if ($("profile-photo-zoom")) $("profile-photo-zoom").onclick = e => {
@@ -183,5 +223,6 @@
   }
   U.page({ render }).then(() => {
     if (location.hash === "#categories") document.getElementById("categories")?.scrollIntoView();
+    if (location.hash === "#notification-settings") document.getElementById("notification-settings")?.scrollIntoView();
   });
 })();

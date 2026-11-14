@@ -265,5 +265,6 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && renderedDay !== T.toKey(new Date())) render();
   });
-  U.page({ render });
+  U.page({ render }).then(() => window.CoursewiseNotifications?.status().then(status =>
+    document.dispatchEvent(new CustomEvent("coursewise:notifications", { detail: status }))));
 })();

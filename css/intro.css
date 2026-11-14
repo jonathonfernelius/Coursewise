@@ -28,6 +28,9 @@
 .cw-intro-copy{flex:1;min-width:0;display:grid;gap:.1rem}
 .cw-intro-copy strong{font-weight:500;font-size:.95rem}
 .cw-intro-text{font-size:.85rem;color:var(--muted-fg)}
+.cw-intro-notification-help{margin-top:.35rem;font-size:.8rem;color:var(--muted-fg)}
+.cw-intro-notification-help summary{width:max-content;max-width:100%;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.cw-intro-notification-help p{margin:.35rem 0 0;line-height:1.5}
 .cw-intro-step.is-done strong,.cw-intro-step.is-skipped strong{font-weight:400;color:var(--muted-fg)}
 
 .cw-intro-actions{flex:none;display:flex;align-items:center;gap:.9rem}

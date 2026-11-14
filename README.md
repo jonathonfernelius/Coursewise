@@ -35,6 +35,7 @@ These diagrams illustrate how Coursewise connects users, Canvas, Gemini AI, and 
 6. Use the navigation bar to switch between **Today**, **To-do**, **Calendar**, and **Profile**.
 7. You can also use the **Friends** icon in the top bar to connect with other students. Authorized admins have access to an additional admin screen, including a **Whimsy ideas** view of member theme suggestions.
 8. Account data and tasks are stored in Supabase so they remain available when you sign in again.
+9. Optional task notifications can be enabled separately on each device in **Profile → Task notifications**. See [Task notification setup](TASK-REMINDERS-SETUP.md) for project configuration and Windows, macOS, iPhone/iPad, and Android steps.
 
 ## Screens and Features
 The screenshots below show the current desktop interface and selected feature panels. Some interface elements and colors change based on account settings.
@@ -58,7 +59,7 @@ The Today page is the main dashboard and gives users a quick overview of their d
 5. **Overdue:** Shows unfinished tasks with deadlines that have already passed.
 6. **This week:** Displays a seven-day overview with task counts, a small visual chart, and an agenda that can be grouped **By day** or **By list**.
 7. **Add task:** Allows users to create a task without leaving the dashboard.
-8. **Getting started guide:** New accounts see three setup steps at the top of Today (connect Canvas, add a first task, add a friend). Each step checks itself off when it's done, Canvas and friends can be skipped, and the guide can be closed or brought back from **Profile → Preferences**. Run `supabase/migrations/20261111000000_intro_guide.sql` so the guide is remembered across devices.
+8. **Getting started guide:** New accounts see setup steps at the top of Today (connect Canvas, add a first task, add a friend, and optionally enable notifications). Steps update as you use the app, optional steps can be skipped, and the guide can be closed or brought back from **Profile → Preferences**. Run `supabase/migrations/20261111000000_intro_guide.sql` so the guide is remembered across devices.
 9. **Canvas reminder:** If Canvas is not connected, the dashboard can display a reminder linking to the connection setup. When Canvas is connected, a banner appears if there are new items to review, and a small card confirms when due dates were synced.
 
 **To-do lists**
@@ -196,9 +197,14 @@ The Admin screen is intended for authorized administrators and provides an overv
 4. Optionally assign a category, such as Homework, Projects, or another user-defined category.
 5. Set a due date and, if needed, a specific due time.
 6. Choose whether the task repeats and select the recurrence settings if applicable.
-7. Save the task.
-8. The task can now appear on the Today, To-do, and Calendar pages according to its date and list.
-9. Mark the task complete when finished. Completing tasks also contributes to daily completion counts and streaks.
+7. Optionally enable **Schedule Reminder** and choose how long before the due time to be notified. This option is available only while a due date is set. Tasks without a specific due time use 9:00 a.m. in the notification device's time zone.
+8. Save the task.
+9. The task can now appear on the Today, To-do, and Calendar pages according to its date and list.
+10. Mark the task complete when finished. Completing tasks also contributes to daily completion counts and streaks.
+
+### Getting Started: Enable Task Notifications
+
+Notifications are optional and must be enabled separately on every browser or device. Open **Profile → Task notifications**, tap **Enable notifications**, and allow the browser prompt. On iPhone or iPad, first add Coursewise to the Home Screen in Safari and open it from its Home Screen icon. Windows and macOS users may also need to allow the browser in the operating system's notification settings. Android users may need to allow notifications for the browser in Android settings. See [Task notification setup](TASK-REMINDERS-SETUP.md) for the full deployment and platform steps.
 
 ## Calendar Events
 Use **Add event** on the Calendar page to create a dated event with an optional start time, end time, category, and repeat rule. Events appear on the calendar and in their day's details, but are stored separately from tasks and do not appear in the to-do lists. The Upcoming events section shows events for today and the next six days. The event form includes a reserved notification control; **event notifications are not enabled yet**.
@@ -217,8 +223,9 @@ The application uses Supabase for persistent data. Existing projects should have
 - `supabase/migrations/20261109000000_calendar_events.sql` — calendar event storage.
 - `supabase/migrations/20261109010000_calendar_event_recurrence.sql` — repeating calendar events.
 - `supabase/migrations/20261109020000_calendar_event_end_time.sql` — event end times.
+- `supabase/migrations/20261113000000_web_push_task_reminders.sql` — per-device push subscriptions and reminder delivery tracking.
 
-Other Supabase functions and setup requirements are documented in the accompanying setup files, including `ADMIN-SETUP.md`, `PROFILE-PHOTOS-SETUP.md`, `CANVAS-IMPORT-SETUP.md`, and `CANVAS-ANY-SCHOOL.md`.
+Other Supabase functions and setup requirements are documented in the accompanying setup files, including `TASK-REMINDERS-SETUP.md`, `ADMIN-SETUP.md`, `PROFILE-PHOTOS-SETUP.md`, `CANVAS-IMPORT-SETUP.md`, and `CANVAS-ANY-SCHOOL.md`.
 
 ## Canvas AI Setup
 If AI review is enabled, store `GEMINI_API_KEY` and a supported `GEMINI_MODEL` as **Supabase Function secrets** and deploy `supabase/functions/canvas-ai-suggestions/index.ts`. Do not put the Gemini API key in browser JavaScript. AI reviews send limited assignment/calendar information for suggestions; usage quotas and provider limits still apply. See `CANVAS-IMPORT-SETUP.md` for the complete guided import and deployment process.
@@ -239,5 +246,5 @@ This demonstrates that the frontend communicates with Supabase and that user dat
 - Coursewise is designed to work on both desktop and mobile screens, including responsive navigation and layouts.
 - Personal streaks are based on at least one completed task per Mountain Time day. Removing a completed task can affect the current streak calculation; a saved personal best is maintained separately.
 - Calendar events and tasks are different types of records, even though both appear in the calendar.
-- Some optional features, including calendar event notifications, are reserved for future implementation.
+- Task reminders use Web Push after the Supabase sender, secrets, database schedule, and device permission are configured. Calendar event notifications are not enabled.
 - The ERD image included above is the project diagram currently provided in this repository; review it separately if the database schema has changed since the diagram was created.

@@ -278,7 +278,7 @@
   function taskToRow(p) {
     return { Name: p.title, CategoryID: p.categoryId || null, ListID: p.listId || null,
       ListName: state.lists.find(l => l.id === p.listId)?.title || null,
-      TaskDueDate: dueStamp(p), HasDueTime: !!(p.due && p.time), Reminder: p.reminder || null,
+      TaskDueDate: dueStamp(p), HasDueTime: !!(p.due && p.time), Reminder: p.due ? (p.reminder || null) : null,
       Repeating: p.repeat ? JSON.stringify(p.repeat) : null };
   }
   async function allRows(table, columns, order) {

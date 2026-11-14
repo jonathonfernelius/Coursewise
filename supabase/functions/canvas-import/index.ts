@@ -386,7 +386,8 @@ Deno.serve(async req => {
           .from("Tasks")
           .update({
             TaskDueDate: event.due,
-            HasDueTime: event.hasTime
+            HasDueTime: event.hasTime,
+            ...(event.due == null ? { Reminder: null } : {})
           })
           .eq("TaskID", taskId)
           .eq("UserID", profile.UserID)
@@ -477,7 +478,8 @@ Deno.serve(async req => {
         // Always refresh the assignment's deadline.
         const updates: Record<string, unknown> = {
           TaskDueDate: event.due,
-          HasDueTime: event.hasTime
+          HasDueTime: event.hasTime,
+          ...(event.due == null ? { Reminder: null } : {})
         };
 
         // Only change the list if the user chose one.
@@ -557,7 +559,8 @@ Deno.serve(async req => {
 
         const repairs: Record<string, unknown> = {
           TaskDueDate: event.due,
-          HasDueTime: event.hasTime
+          HasDueTime: event.hasTime,
+          ...(event.due == null ? { Reminder: null } : {})
         };
         if (item.listId) {
           repairs.ListID = item.listId;
