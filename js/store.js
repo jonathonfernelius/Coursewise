@@ -294,7 +294,8 @@
     const base = 'ColorTheme,WeekStart,ShowDone';
     let failure;
     // Newer columns are optional so the app keeps working until their SQL has been run.
-    for (const extra of ['Appearance,TimeFormat', 'Appearance', 'TimeFormat', '']) {
+    for (const extra of ['Appearance,TimeFormat,ShowGoose', 'Appearance,TimeFormat', 'Appearance', 'TimeFormat', '']) {
+
       const r = await db.from('Settings').select(extra ? `${base},${extra}` : base).eq('UserID', owner).single();
       if (!r.error) return r.data;
       failure = r.error;
@@ -346,7 +347,14 @@
       try { localStorage.setItem(TIME_KEY, timeFormat); } catch {}
     }
     state = { signedIn: true, user: { first: profile.FirstName, last: profile.LastName, username: profile.Username, email: authUser.email || '' },
-      prefs: { theme: THEMES.some(t => t[0]===settings.ColorTheme) ? settings.ColorTheme : 'green', weekStart: settings.WeekStart, showDone: settings.ShowDone, appearance: validMode(settings.Appearance), timeFormat },
+      prefs: {
+        theme: THEMES.some(t => t[0] === settings.ColorTheme) ? settings.ColorTheme : 'green',
+        weekStart: settings.WeekStart,
+        showDone: settings.ShowDone,
+        appearance: validMode(settings.Appearance),
+        timeFormat,
+        showGoose: settings.ShowGoose !== false
+      },
       categories: categories.map(c => ({id:id(c.CategoryID),name:c.DisplayName,tone:tones.includes(c.DisplayColor)?c.DisplayColor:'slate'})),
       lists: lists.map(l => ({id:id(l.ListID),title:l.Title,order:l.SortOrder})),
       tasks: tasks
@@ -361,6 +369,9 @@
       completedToday: Number(streak?.completed_today) || 0,
       streak: streak ? { current: Number(streak.current) || 0, longest: Number(streak.longest) || 0, doneToday: !!streak.done_today } : null,
       introDone: introDone(introSaved, tasks.length > 0 || lists.length > 0) };
+    // Apply saved goose visibility on every page.
+    document.documentElement.dataset.goose =
+      state.prefs.showGoose ? "on" : "off";
     if (window.CoursewiseTheme) window.CoursewiseTheme.apply(state.prefs.theme);
     else document.documentElement.dataset.theme = state.prefs.theme;
     // The account's saved light/dark mode wins. If the account has none yet, keep this device's mode and save it.
@@ -449,9 +460,22 @@
         // Best effort: if the column is not set up yet, the choice still works on this device.
         try { await db.from('Settings').update({ TimeFormat: timeFormat }).eq('UserID', owner); } catch {}
       }
-      const row={}; if ('theme' in p) row.ColorTheme=p.theme; if ('weekStart' in p) row.WeekStart=p.weekStart; if ('showDone' in p) row.ShowDone=p.showDone;
+      
+      const row = {};
+      if ('theme' in p) row.ColorTheme = p.theme;
+      if ('weekStart' in p) row.WeekStart = p.weekStart;
+      if ('showDone' in p) row.ShowDone = p.showDone;
+      if ('showGoose' in p) row.ShowGoose = !!p.showGoose;
+
       if (!Object.keys(row).length) return;
       await write(db.from('Settings').update(row).eq('UserID',owner).select('UserID').single());
+      
+      if ('showGoose' in p) {
+        state.prefs.showGoose = !!p.showGoose;
+        document.documentElement.dataset.goose =
+          p.showGoose ? "on" : "off";
+      }
+
     },
     async addCategory(name,tone) {
       const c=await result(db.from('Categories').insert({UserID:owner,DisplayName:name,DisplayColor:tone}).select('CategoryID').single());
